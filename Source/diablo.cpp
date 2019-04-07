@@ -269,7 +269,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	fault_get_filter();
 
 	bNoEvent = diablo_get_not_running();
-	if (!diablo_find_window("DIABLO") && bNoEvent) {
+	if (!diablo_find_window("Give Me Sanctuary") && bNoEvent) {
 #ifdef _DEBUG
 		SFileEnableDirectAccess(TRUE);
 #endif
@@ -286,11 +286,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 		{
 			char szValueName[] = "Intro";
-			if (!SRegLoadValue("Diablo", szValueName, 0, &nData))
+			if (!SRegLoadValue("Give Me Sanctuary", szValueName, 0, &nData))
 				nData = 1;
 			if (nData)
 				play_movie("gendata\\diablo1.smk", TRUE);
-			SRegSaveValue("Diablo", szValueName, 0, 0);
+			SRegSaveValue("Give Me Sanctuary", szValueName, 0, 0);
 		}
 
 #ifdef _DEBUG

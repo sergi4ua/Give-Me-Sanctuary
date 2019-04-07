@@ -19,7 +19,7 @@ BOOLEAN screensaver_enabled_prev;
 /* data */
 
 char gszVersionNumber[260] = "internal version unknown";
-char gszProductName[260] = "Diablo v1.09";
+char gszProductName[260] = "Give Me Sanctuary-indev";
 
 void __fastcall init_cleanup(BOOL show_cursor)
 {
@@ -161,8 +161,8 @@ void __fastcall init_create_window(int nCmdShow)
 	wcex.hIcon = LoadIcon(ghInst, MAKEINTRESOURCE(IDI_ICON1));
 	wcex.hCursor = LoadCursor(0, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-	wcex.lpszMenuName = "DIABLO";
-	wcex.lpszClassName = "DIABLO";
+	wcex.lpszMenuName = "Give Me Sanctuary";
+	wcex.lpszClassName = "Give Me Sanctuary";
 	wcex.hIconSm = (HICON)LoadImage(ghInst, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
 	if (!RegisterClassEx(&wcex))
 		app_fatal("Unable to register window class");
@@ -174,7 +174,7 @@ void __fastcall init_create_window(int nCmdShow)
 		nHeight = GetSystemMetrics(SM_CYSCREEN);
 	else
 		nHeight = 480;
-	hWnd = CreateWindowEx(0, "DIABLO", "DIABLO", WS_POPUP, 0, 0, nWidth, nHeight, NULL, NULL, ghInst, NULL);
+	hWnd = CreateWindowEx(0, "Give Me Sanctuary", "Give Me Sanctuary", WS_POPUP, 0, 0, nWidth, nHeight, NULL, NULL, ghInst, NULL);
 	if (!hWnd)
 		app_fatal("Unable to create main window");
 	ShowWindow(hWnd, SW_SHOWNORMAL); // nCmdShow used only in beta: ShowWindow(hWnd, nCmdShow)

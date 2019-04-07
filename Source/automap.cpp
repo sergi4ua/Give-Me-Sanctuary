@@ -2,6 +2,10 @@
 
 #include "../types.h"
 
+#include <iostream>
+#include <map>
+#include <vector>
+
 DEVILUTION_BEGIN_NAMESPACE
 
 // BUGFIX: only the first 256 elements are ever read
@@ -38,6 +42,11 @@ int AMPlayerY;      // weak
 #define MAPFLAG_SQUARE 0x40
 #define MAPFLAG_STAIRS 0x80
 
+using namespace std;
+
+std::map<std::string, bool> BoolConfig;
+std::map<std::string, int> IntConfig; //config variables
+
 void __cdecl InitAutomapOnce()
 {
 	automapflag = FALSE;
@@ -47,6 +56,202 @@ void __cdecl InitAutomapOnce()
 	AutoMapYPos = 8;
 	AMPlayerX = 4;
 	AMPlayerY = 2;
+	AMPlayerY = AutoMapPosBits >> 4;
+}
+
+void HighlightItemsNameOnMap()
+{
+	class drawingQueue
+	{
+	public:
+		int ItemID;
+		int Row;
+		int Col;
+		int x;
+		int y;
+		int new_x = -1;
+		int new_y = -1;
+		int width;
+		int height;
+		int magicLevel;
+		std::string text;
+		drawingQueue(int x2, int y2, int width2, int height2, int Row2, int Col2, int ItemID2, int q2, std::string text2) { x = x2; y = y2; Row = Row2; Col = Col2; ItemID = ItemID2; width = width2; height = height2; magicLevel = q2; text = text2; }
+	};
+	char textOnGround[256];
+
+	int ScreenHeight = 480;
+	int Screen_TopEnd = 160;
+	int Screen_LeftBorder = 64;
+	int ScreenWidth = 640;
+
+
+	std::vector<drawingQueue> q;
+
+	//SDL_ShowMessageBox("null",0);
+	/*
+	if (numitems < 127)
+	{
+		ii = itemavail[0];
+		GetSuperItemSpace(x, y, itemavail[0]);
+		itemactive[numitems] = ii;
+		itemavail[0] = itemavail[-numitems + 126];
+		*/
+	for (int i = 0; i < numitems; i++) {
+		//ItemStruct& item = ItemsOnGround[MapItemsFreeIndexes[i + 1]];
+		ItemStruct& item_local = item[itemactive[i]];
+		int row = item_local._ix - plr[myplr].WorldX;
+		int col = item_local._iy - plr[myplr].WorldY;
+		// items on ground name highlighting (Qndel)
+		if (item_local._itype == ITYPE_GOLD) {
+			sprintf(textOnGround, "%i gold", item_local._ivalue);
+		}
+		else {
+			sprintf(textOnGround, "%s", item_local._iIdentified ? item_local._iIName : item_local._iName);
+		}
+		int x2 = 32 * (row - col);// +(200 * ScrollInfo._sxoff / 100 >> 1) + AutoMapXOfs;
+		int y2 = 16 * (row + col);// +(200 * ScrollInfo._syoff / 100 >> 1) + AutoMapYOfs - 16;
+		int centerXOffset = GetTextWidth(textOnGround) / 2; // offset to attempt to center the name above the item
+		int x = x2;// -96 - centerXOffset;
+		int y = y2;
+		int x3 = x;// +95;
+		int y3 = y - 1;
+		//if( x > -Screen_LeftBorder * 2 && x + centerXOffset < ScreenWidth + Screen_LeftBorder && y > -8 && y < ScreenHeight ){
+		//if (x > -Screen_LeftBorder * 2 && x3 + centerXOffset < ScreenWidth + Screen_LeftBorder && y3 > 13 && y3 + 13 < ScreenHeight + Screen_TopEnd) {
+		if(true){
+			// add to drawing queue
+			//DrawLevelInfoText( x, y, textOnGround, By( item.MagicLevel, C_0_White, C_1_Blue, C_3_Gold, C_4_Orange) );
+			std::string t2(textOnGround);
+
+			q.push_back(drawingQueue(x, y, centerXOffset * 2, 13, item_local._ix, item_local._iy, itemactive[i], item_local._iMagical, t2));
+		}
+	}
+	const int borderX = 5;
+	bool highlightItem = false;
+	for (unsigned int i = 0; i < q.size(); ++i) {
+		if (q[i].new_x == -1 && q[i].new_y == -1) {
+			q[i].new_x = q[i].x; q[i].new_y = q[i].y;
+		}
+		std::map<int, bool> backtrace;
+		while (1) {
+
+			bool canShow = true;
+
+			for (unsigned int j = 0; j < i; ++j) {
+				if (abs(q[j].new_y - q[i].new_y) < q[i].height + 2) {
+					if (q[j].new_x >= q[i].new_x && q[j].new_x - q[i].new_x < q[i].width + borderX) {
+						canShow = false;
+						int newpos = q[j].new_x - q[i].width - borderX;
+						if (backtrace.find(newpos) == backtrace.end()) {
+							q[i].new_x = newpos;
+							backtrace[newpos] = true;
+						}
+						else {
+							newpos = q[j].new_x + q[j].width + borderX;
+							q[i].new_x = newpos;
+							backtrace[newpos] = true;
+						}
+					}
+					else if (q[j].new_x < q[i].new_x && q[i].new_x - q[j].new_x < q[j].width + borderX) {
+						canShow = false;
+						int newpos = q[j].new_x + q[j].width + borderX;;
+						if (backtrace.find(newpos) == backtrace.end()) {
+							q[i].new_x = newpos;
+							backtrace[newpos] = true;
+						}
+						else {
+							newpos = q[j].new_x - q[i].width - borderX;
+							q[i].new_x = newpos;
+							backtrace[newpos] = true;
+						}
+					}
+				}
+
+			}
+
+			if (canShow) { break; }
+		}
+	}
+
+
+	for (unsigned int i = 0; i < q.size(); ++i) {
+		drawingQueue t = q[i];
+		if (t.new_x == -1 && t.new_y == -1) {
+			t.new_x = t.x; t.new_y = t.y;
+		}
+		int x3 = t.new_x + 95;
+		int y3 = t.new_y - 1;
+		int bgcolor = 0;
+		if(true){
+		//if (t.new_x > -Screen_LeftBorder * 2 && x3 + t.width / 2 < ScreenWidth + Screen_LeftBorder && y3 > 13 && y3 + 13 < ScreenHeight + Screen_TopEnd) {
+
+			/*
+			int bgcolor = 0;
+			int highlightY = t.new_y - 175;
+			int highlightX = t.new_x + 30;
+			if (CursorX >= highlightX && CursorX <= highlightX + t.width + 1 && CursorY >= highlightY && CursorY <= highlightY + t.height) {
+				bgcolor = 134;
+				HighlightedItem.ItemID = t.ItemID;
+				HighlightedItem.Row = t.Row;
+				HighlightedItem.Col = t.Col;
+				highlightItem = true;
+			}
+			*/
+
+
+			//DrawTransparentBackground(x3, y3, t.width + 1, t.height, 0, 0, bgcolor, bgcolor);
+			char color = COL_WHITE;
+			//DrawCustomText(t.new_x, t.new_y, 0, &t.text[0u], color);
+			int sx = t.new_x + 320 - t.width / 2;
+			int sy = t.new_y + 180;
+
+			int sx2 = t.new_x + 383 - t.width / 2;
+			int sy2 = t.new_y + 342;
+
+
+			if (sx < 0 || sx > 640 || sy < 0 || sy > 480) {
+				continue;
+			}
+
+			if (sx2 < 0 || sx2 > 640 || sy2 < 0 || sy2 > 480) {
+				continue;
+			}
+			DrawTransparentBackground(sx2,sy2, t.width + 1, t.height, 0, 0, bgcolor, bgcolor);
+			PrintGameStr(sx,sy,&t.text[0u], color);
+			//ADD_PlrStringXY(t.new_x, t.new_y, GetTextWidth(&t.text[0]), &t.text[0u], color);
+		}
+	}
+	/*
+	if (highlightItem == false) {
+		HighlightedItem.ItemID = -1;
+	}
+	*/
+
+#ifdef PREVHIGHLIGHT
+	char textOnGround[256];
+	for (int i = 0; i < CountItemsOnMap; i++) {
+		Item& item = ItemsOnGround[MapItemsFreeIndexes[i + 1]];
+		int row = item.MapRow - PlayerRowPos;
+		int col = item.MapCol - PlayerColPos;
+
+		// items on ground name highlighting (Qndel)
+		if (item.ItemCode == IC_11_GOLD) {
+			sprintf(textOnGround, "%i gold", item.QualityLevel);
+		}
+		else {
+			sprintf(textOnGround, "%s", item.Identified ? item.FullMagicalItemName : item.Name);
+		}
+		int x2 = 32 * (row - col) + (200 * (PlayerMovedX + PlayerShiftY) / 100 >> 1) + Xofs;
+		int y2 = 16 * (row + col) + (200 * (PlayerMovedY + PlayerShiftX) / 100 >> 1) + Yofs - 16;
+		int centerXOffset = GetTextWidth(textOnGround) / 2; // offset to attempt to center the name above the item
+															// don't think that red square is needs (there is item outline and blue square already)
+															//AutomapDrawOneItem( x2, y2 + item.CelWidth / 8, 155 ); // drawing a red square on the item
+		int x = x2 - 64 - centerXOffset;
+		int y = y2 - 156;
+		if (x > -Screen_LeftBorder * 2 && x + centerXOffset < ScreenWidth + Screen_LeftBorder && y > -8 && y < ScreenHeight) {
+			DrawLevelInfoText(x, y, textOnGround, By(item.MagicLevel, C_0_White, C_1_Blue, C_3_Gold, C_4_Orange));
+		}
+	}
+#endif
 }
 
 void __cdecl InitAutomap()

@@ -1,17 +1,14 @@
-[![Downloads](https://img.shields.io/github/downloads/diasurgical/devilutionX/total.svg)](https://github.com/diasurgical/devilutionX/releases)
-[![github stars](https://img.shields.io/github/stars/diasurgical/devilutionX.svg)](https://github.com/diasurgical/devilutionX/stargazers)
+[![Downloads](https://img.shields.io/github/downloads/sergi4ua/Give-Me-Sanctuary/total.svg)](https://github.com/diasurgical/devilutionX/releases)
+[![github stars](https://img.shields.io/github/stars/sergi4ua/Give-Me-Sanctuary.svg)](https://github.com/diasurgical/devilutionX/stargazers)
 
 Status | Platform
 ---:| ---
-[![CircleCI](https://circleci.com/gh/diasurgical/devilutionX.svg?style=svg)](https://circleci.com/gh/diasurgical/devilutionX) | Linux 32bit & 64bit, Windows 32bit
-[![Build Status](https://travis-ci.org/diasurgical/devilutionX.svg?branch=master)](https://travis-ci.org/diasurgical/devilutionX) | macOS 32bit & 64bit
-[![Build status](https://ci.appveyor.com/api/projects/status/1a0jus2372qvksht?svg=true)](https://ci.appveyor.com/project/AJenbo/devilutionx) | Windows MSVC
 
-![Discord Channel](https://avatars3.githubusercontent.com/u/1965106?s=16&v=4) [Discord Chat Channel](https://discord.gg/aQBQdDe)
+![Discord Channel](https://avatars3.githubusercontent.com/u/1965106?s=16&v=4) [Discord Chat Channel](https://discord.gg/qS2GNT9)
 
 # How To Play:
  - Copy diabdat.mpq from your CD, or GoG install folder, to the DevilutionX game directory ; Make sure it is all lowercase.
- - [Download DevilutionX](https://github.com/diasurgical/devilutionX/releases), or build from source
+ - [Download the release](https://github.com/sergi4ua/Give-Me-Sanctuary/releases), or build from source
  - Install SDL2 (including SDL2_mixer and SDL2_ttf) make sure to get the appropriate 32bit or 64bit version.
  - Run `./devilutionx`
 

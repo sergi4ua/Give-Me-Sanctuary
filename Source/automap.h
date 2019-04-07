@@ -16,6 +16,7 @@ extern int AMPlayerX;      // weak
 extern int AMPlayerY;      // weak
 
 void __cdecl InitAutomapOnce();
+void HighlightItemsNameOnMap();
 void __cdecl InitAutomap();
 void __cdecl StartAutomap();
 void __cdecl AutomapUp();

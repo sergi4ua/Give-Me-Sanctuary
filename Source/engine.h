@@ -47,6 +47,10 @@ unsigned char *__fastcall DiabloAllocPtr(int dwBytes);
 void __fastcall mem_free_dbg(void *p);
 BYTE *__fastcall LoadFileInMem(char *pszName, int *pdwFileLen);
 void __fastcall LoadFileWithMem(char *pszName, void *buf);
+
+int GetTextWidth(char* s);
+void DrawTransparentBackground(int xPos, int yPos, int width, int height, int borderX, int borderY, char backgroundColor, char borderColor);
+
 void __fastcall Cl2ApplyTrans(BYTE *p, BYTE *ttbl, int nCel);
 void __fastcall Cl2DecodeFrm1(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
 void __fastcall Cl2DecDatFrm1(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
