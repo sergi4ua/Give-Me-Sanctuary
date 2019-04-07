@@ -137,7 +137,7 @@ BOOL __fastcall mainmenu_init_menu(int type)
 	if (type == 4)
 		return TRUE;
 
-	music_stop();
+	//music_stop();
 
 	success = StartGame(type != 2, type != 3);
 	if (success)
