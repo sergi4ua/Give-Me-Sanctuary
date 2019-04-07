@@ -4,7 +4,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <Windows.h>
 
 DEVILUTION_BEGIN_NAMESPACE
 
@@ -399,6 +398,8 @@ void __fastcall DrawView(int StartX, int StartY)
 
 	DrawDurIcon();
 	//if(drawitems)
+
+	if(drawitems)
 		HighlightItemsNameOnMap();
 
 	//std::cout << (auto*)0x800
