@@ -1421,6 +1421,34 @@ void __fastcall Cel2DecodeLightTrans(BYTE *pBuff, BYTE *pCelBuff, int nCel, int 
 // 69BEF8: using guessed type int light_table_index;
 // 69CF94: using guessed type int cel_transparency_active;
 
+void DrawTransparentBackground(int xPos, int yPos, int width, int height, int borderX, int borderY, char backgroundColor, char borderColor)
+{
+	int WorkingWidth = 768;// 640;
+	char* WorkingSurface = (char*)gpBuffer;
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			if (x < borderX || x + borderX >= width || y < borderY || y + borderY >= height /*|| y == 25*/) {
+				//WorkingSurface[ ((yPos - height) + y) * WorkingWidth + (xPos + x) ] = borderColor;
+			}
+			else {
+				//if( y & 1 && x & 1 || !(y & 1) && !(x & 1) )
+				WorkingSurface[((yPos - height) + y) * WorkingWidth + (xPos + x)] = backgroundColor;
+			}
+		}
+	}
+}
+
+
+int GetTextWidth(char* s)
+{
+	int l = 0;
+	while (*s) {
+		l += fontkern[fontframe[gbFontTransTbl[*s++]]] + 1;
+	}
+	return l;
+}
+
 void __fastcall Cel2DrawHdrLightRed(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir, char light)
 {
 	int w, hdr, idx, nDataSize, v1;

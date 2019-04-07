@@ -1045,6 +1045,7 @@ void __fastcall T_DrawView(int StartX, int StartY)
 		DrawDiabloMsg();
 	if (PauseMode && !deathflag)
 		gmenu_draw_pause();
+	HighlightItemsNameOnMap();
 	DrawPlrMsg();
 	gmenu_draw();
 	doom_draw();
