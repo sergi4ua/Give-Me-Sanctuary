@@ -26,7 +26,7 @@
 #define MAXMULTIQUESTS			4
 #define MAXOBJECTS				127
 #define MAXPORTAL				4
-#define MAXQUESTS				16
+#define MAXQUESTS				17
 #define MAXTHEMES				50
 #define MAXTILES				2048
 #define MAXTRIGGERS				5

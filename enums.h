@@ -2513,6 +2513,7 @@ typedef enum quest_id {
 	QTYPE_PW      = 0xD,
 	QTYPE_BONE    = 0xE,
 	QTYPE_VB      = 0xF,
+	QTYPE_BUTCHAMBR = 0x11,
 	QTYPE_INVALID = 0xFFFFFFFF,
 } quest_id;
 

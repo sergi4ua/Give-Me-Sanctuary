@@ -16,6 +16,7 @@ BOOL gbRunGame;
 int glMid3Seed[NUMLEVELS];
 BOOL gbRunGameResult;
 int zoomflag; // weak
+bool drawitems;
 BOOL gbProcessPlayers;
 int glEndSeed[NUMLEVELS];
 BOOL gbLoadGame;
@@ -1177,6 +1178,9 @@ void __fastcall PressKey(int vkey)
 							if (stextflag)
 								STextPrior();
 							return;
+						case 0x12:
+							MessageBoxA(NULL, "no", "ha", 1);
+						return;
 						case VK_NEXT:
 							if (stextflag)
 								STextNext();
