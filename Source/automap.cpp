@@ -59,6 +59,8 @@ void __cdecl InitAutomapOnce()
 	AMPlayerY = AutoMapPosBits >> 4;
 }
 
+// old ver
+/*
 void HighlightItemsNameOnMap()
 {
 	class drawingQueue
@@ -95,7 +97,7 @@ void HighlightItemsNameOnMap()
 		GetSuperItemSpace(x, y, itemavail[0]);
 		itemactive[numitems] = ii;
 		itemavail[0] = itemavail[-numitems + 126];
-		*/
+		*//*
 	for (int i = 0; i < numitems; i++) {
 		//ItemStruct& item = ItemsOnGround[MapItemsFreeIndexes[i + 1]];
 		ItemStruct& item_local = item[itemactive[i]];
@@ -197,7 +199,7 @@ void HighlightItemsNameOnMap()
 			}
 			*/
 
-
+/*
 			//DrawTransparentBackground(x3, y3, t.width + 1, t.height, 0, 0, bgcolor, bgcolor);
 			char color = COL_WHITE;
 			//DrawCustomText(t.new_x, t.new_y, 0, &t.text[0u], color);
@@ -225,7 +227,7 @@ void HighlightItemsNameOnMap()
 		HighlightedItem.ItemID = -1;
 	}
 	*/
-
+/*
 #ifdef PREVHIGHLIGHT
 	char textOnGround[256];
 	for (int i = 0; i < CountItemsOnMap; i++) {
@@ -253,6 +255,7 @@ void HighlightItemsNameOnMap()
 	}
 #endif
 }
+*/
 
 void __cdecl InitAutomap()
 {
