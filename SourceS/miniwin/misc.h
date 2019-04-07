@@ -759,6 +759,8 @@ constexpr auto DVL_VK_OEM_4 = 0xDB;
 constexpr auto DVL_VK_OEM_5 = 0xDC;
 constexpr auto DVL_VK_OEM_6 = 0xDD;
 constexpr auto DVL_VK_OEM_7 = 0xDE;
+
+constexpr auto DVL_VK_MENU = 0x12;
 //constexpr auto DVL_VK_OEM_8 = 0xDF;
 //constexpr auto DVL_VK_OEM_102 = 0xE2;
 

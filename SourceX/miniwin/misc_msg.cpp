@@ -74,6 +74,12 @@ static int translate_sdl_key(SDL_Keysym key)
 	case SDLK_PRINTSCREEN:
 		return DVL_VK_SNAPSHOT;
 
+	case SDLK_MENU:
+		return DVL_VK_MENU;
+
+	case 0x400000E2:
+		return DVL_VK_MENU;
+
 	default:
 		if (sym >= SDLK_a && sym <= SDLK_z) {
 			return 'A' + (sym - SDLK_a);
@@ -274,7 +280,17 @@ WINBOOL TranslateMessage(const MSG *lpMsg)
 
 SHORT GetAsyncKeyState(int vKey)
 {
-	DUMMY_ONCE();
+	//DUMMY_PRINT("wat the fuk is this?");
+	SDL_Event event;
+
+	if(SDL_PollEvent(&event))
+	{
+		switch( event.type ) {
+			case SDL_KEYDOWN:
+				DUMMY_PRINT("Key pressed");
+		}
+	}
+
 	// TODO: Not handled yet.
 	return 0;
 }

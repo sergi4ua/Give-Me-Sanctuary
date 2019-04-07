@@ -1031,6 +1031,9 @@ void __fastcall ReleaseKey(int vkey)
 {
 	if (vkey == VK_SNAPSHOT)
 		CaptureScreen();
+
+	if (vkey == 0x12)
+		drawitems = false;
 }
 
 void __fastcall PressKey(int vkey)
@@ -1179,7 +1182,7 @@ void __fastcall PressKey(int vkey)
 								STextPrior();
 							return;
 						case 0x12:
-							MessageBoxA(NULL, "no", "ha", 1);
+							drawitems = true;
 						return;
 						case VK_NEXT:
 							if (stextflag)
