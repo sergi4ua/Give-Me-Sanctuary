@@ -573,6 +573,12 @@ void __fastcall CelDecDatLightTrans(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataS
 }
 // 69BEF8: using guessed type int light_table_index;
 
+void ColorPixel(int x, int y, int color) {
+
+	char* WorkingSurface = (char*)gpBuffer;
+	WorkingSurface[y*768+x] = color;
+}
+
 void __fastcall CelDecodeLightOnly(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth)
 {
 	int nDataSize;
@@ -1429,7 +1435,7 @@ void DrawTransparentBackground(int xPos, int yPos, int width, int height, int bo
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			if (x < borderX || x + borderX >= width || y < borderY || y + borderY >= height /*|| y == 25*/) {
-				//WorkingSurface[ ((yPos - height) + y) * WorkingWidth + (xPos + x) ] = borderColor;
+				WorkingSurface[ ((yPos - height) + y) * WorkingWidth + (xPos + x) ] = borderColor;
 			}
 			else {
 				//if( y & 1 && x & 1 || !(y & 1) && !(x & 1) )

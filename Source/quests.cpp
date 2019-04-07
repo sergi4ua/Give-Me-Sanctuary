@@ -28,6 +28,7 @@ QuestData questlist[MAXQUESTS] = {
 	{      14,         -1, DTYPE_NONE,      QTYPE_VEIL,   100,      0,       0, QUEST_VEIL9,    "Lachdanan"                },
 	{      15,         -1, DTYPE_NONE,      QTYPE_MOD,    100,      0,       1, QUEST_VILE3,    "Diablo"                   },
 	{       2,          2, DTYPE_NONE,      QTYPE_BUTCH,  100,      0,       1, QUEST_BUTCH9,   "The Butcher"              },
+	{       2,         -1, DTYPE_CATACOMBS,      QTYPE_BUTCHAMBR,  100,      0,       1, QUEST_BUTCH10,  "The Butcher's Chamber"              },
 	{       4,         -1, DTYPE_NONE,      QTYPE_BOL,    100,      0,       0, QUEST_BANNER2,  "Ogden's Sign"             },
 	{       7,         -1, DTYPE_NONE,      QTYPE_BLIND,  100,      0,       0, QUEST_BLINDING, "Halls of the Blind"       },
 	{       5,         -1, DTYPE_NONE,      QTYPE_BLOOD,  100,      0,       0, QUEST_BLOODY,   "Valor"                    },
@@ -41,12 +42,13 @@ QuestData questlist[MAXQUESTS] = {
 };
 char questxoff[7] = { 0, -1, 0, -1, -2, -1, -2 };
 char questyoff[7] = { 0, 0, -1, -1, -1, -2, -2 };
-char *questtrigstr[5] = {
+char *questtrigstr[6] = {
 	"King Leoric's Tomb",
 	"The Chamber of Bone",
 	"Maze",
 	"A Dark Passage",
-	"Unholy Altar"
+	"Unholy Altar",
+	"Butcher's Chamber"
 };
 int QuestGroup1[3] = { QTYPE_BUTCH, QTYPE_BOL, QTYPE_GARB };
 int QuestGroup2[3] = { QTYPE_BLIND, QTYPE_INFRA, QTYPE_BLOOD };
@@ -696,6 +698,9 @@ void __fastcall DRLG_CheckQuests(int x, int y)
 		if (QuestStatus(i)) {
 			switch (quests[i]._qtype) {
 			case QTYPE_BUTCH:
+				DrawButcher();
+				break;
+			case QTYPE_BUTCHAMBR:
 				DrawButcher();
 				break;
 			case QTYPE_BOL:
