@@ -240,7 +240,7 @@ void __cdecl InitWitch()
 {
 	int i, tnum;
 
-	InitTownerInfo(numtowners, 96, 1, TOWN_WITCH, 80, 20, 5, 10);
+	InitTownerInfo(numtowners, 96, 1, TOWN_WITCH,55, 47, 5, 10);
 	tnum = numtowners;
 	InitQstSnds(tnum);
 	towner[tnum]._tNData = LoadFileInMem("Towners\\TownWmn1\\Witch.CEL", 0);

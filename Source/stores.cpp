@@ -1085,6 +1085,17 @@ void __cdecl S_StartWitch()
 	AddSText(0, 20, 1u, "Leave the shack", COL_WHITE, 1);
 	AddSLine(5);
 	storenumh = 20;
+
+	if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP || plr[myplr]._pMana != plr[myplr]._pMaxMana) {
+			PlaySFX(IS_CAST8);
+			drawhpflag = TRUE;
+			auto v1 = myplr;
+			plr[v1]._pHitPoints = plr[myplr]._pMaxHP;
+			plr[v1]._pHPBase = plr[v1]._pMaxHPBase;
+			plr[v1]._pMana = plr[myplr]._pMaxMana;
+			plr[v1]._pManaBase = plr[v1]._pMaxManaBase;
+			drawmanaflag = TRUE;
+		}
 }
 // 69F10C: using guessed type int storenumh;
 // 6A09E0: using guessed type char stextsize;
@@ -1521,11 +1532,22 @@ void __cdecl S_StartHealer()
 	AddSText(0, 3, 1u, "Healer's home", COL_GOLD, 0);
 	AddSText(0, 9, 1u, "Would you like to:", COL_GOLD, 0);
 	AddSText(0, 12, 1u, "Talk to Pepin", COL_BLUE, 1);
-	AddSText(0, 14, 1u, "Receive healing", COL_WHITE, 1);
-	AddSText(0, 16, 1u, "Buy items", COL_WHITE, 1);
-	AddSText(0, 18, 1u, "Leave Healer's home", COL_WHITE, 1);
-	AddSLine(5);
+	//AddSText(0, 14, 1u, "Receive healing", COL_WHITE, 1);
+	AddSText(0, 14, 1u, "Buy items", COL_WHITE, 1);
+	AddSText(0, 16, 1u, "Leave Healer's home", COL_WHITE, 1);
+	AddSLine(4);
 	storenumh = 20;
+
+	if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP || plr[myplr]._pMana != plr[myplr]._pMaxMana) {
+		PlaySFX(IS_CAST8);
+		drawhpflag = TRUE;
+		auto v1 = myplr;
+		plr[v1]._pHitPoints = plr[myplr]._pMaxHP;
+		plr[v1]._pHPBase = plr[v1]._pMaxHPBase;
+		plr[v1]._pMana = plr[myplr]._pMaxMana;
+		plr[v1]._pManaBase = plr[myplr]._pMaxManaBase;
+		drawmanaflag = TRUE;
+	}
 }
 // 69F10C: using guessed type int storenumh;
 // 6A09E0: using guessed type char stextsize;
@@ -3230,9 +3252,6 @@ void __cdecl S_ConfirmEnter()
 			case STORE_BBOY:
 				BoyBuyItem();
 				break;
-			case STORE_HBUY:
-				HealerBuyItem();
-				break;
 			case STORE_SIDENTIFY:
 				StoryIdItem();
 				v0 = STORE_IDSHOW;
@@ -3242,6 +3261,9 @@ void __cdecl S_ConfirmEnter()
 			case STORE_SPBUY:
 				SmithBuyPItem();
 				break;
+			case STORE_HBUY:
+				HealerBuyItem();
+			break;
 			}
 		} else {
 			switch (stextshold) {
@@ -3289,19 +3311,33 @@ void __cdecl S_HealerEnter()
 		gossipstart = QUEST_PEPIN2;
 		gossipend = QUEST_PEPIN11;
 		_LOBYTE(v0) = STORE_GOSSIP;
-		goto LABEL_12;
+		StartStore(v0);
+		return;
 	}
-	if (stextsel != 14) {
+	/*if (stextsel != 14) {
 		if (stextsel != 16) {
-			if (stextsel == 18)
+			if (stextsel == 14)
 				stextflag = 0;
 			return;
 		}
 		_LOBYTE(v0) = STORE_HBUY;
-	LABEL_12:
+
+	}*/
+
+	//LABEL_12:
+	//	StartStore(v0);
+	//	return;
+
+	if(stextsel == 14) {
+		_LOBYTE(v0) = STORE_HBUY;
 		StartStore(v0);
 		return;
 	}
+
+	if(stextsel == 16) {
+		stextflag = 0;
+	}
+
 	if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP)
 		PlaySFX(IS_CAST8);
 	drawhpflag = TRUE;
