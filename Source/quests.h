@@ -46,7 +46,7 @@ void __fastcall SetMultiQuest(int q, int s, int l, int v1);
 extern QuestData questlist[MAXQUESTS];
 extern char questxoff[7];
 extern char questyoff[7];
-extern char *questtrigstr[6];
+extern char *questtrigstr[5];
 extern int QuestGroup1[3];
 extern int QuestGroup2[3];
 extern int QuestGroup3[3];
