@@ -401,7 +401,7 @@ void __fastcall DrawView(int StartX, int StartY)
 	DrawDurIcon();
 	//if(drawitems)
 
-	if(drawitems)
+	if(drawitems && altHightlightingEnabled)
 		HighlightItemsNameOnMap();
 
 	//std::cout << (auto*)0x800
@@ -431,7 +431,7 @@ void __fastcall DrawView(int StartX, int StartY)
 	else if (PauseMode)
 		gmenu_draw_pause();
 
-	if (pcursmonst != -1) {
+	if (pcursmonst != -1 && monsterHP) {
 		DrawMonsterHealthBar(pcursmonst);
 	}
 	DrawPlrMsg();

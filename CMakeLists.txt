@@ -131,6 +131,7 @@ add_library(devilution STATIC
   Source/msgcmd.cpp
   Source/msg.cpp
   Source/multi.cpp
+  Source/mutator.cpp
   Source/nthread.cpp
   Source/objects.cpp
   Source/pack.cpp

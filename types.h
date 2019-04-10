@@ -121,6 +121,7 @@ DEVILUTION_BEGIN_NAMESPACE
 #include "Source/msg.h"
 #include "Source/msgcmd.h"
 #include "Source/multi.h"
+#include "Source/mutator.h"
 #include "Source/nthread.h"
 #include "Source/objects.h"
 #include "Source/pack.h"

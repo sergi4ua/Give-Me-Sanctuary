@@ -199,6 +199,7 @@ void __fastcall run_game_loop(unsigned int uMsg)
 
 void __fastcall start_game(unsigned int uMsg)
 {
+	init_mutator();
 	cineflag = FALSE;
 	zoomflag = 1;
 	InitCursor();
