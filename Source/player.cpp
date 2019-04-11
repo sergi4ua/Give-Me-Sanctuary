@@ -741,6 +741,9 @@ void __fastcall NextPlrLevel(int pnum)
 	if (pnum == myplr) {
 		drawmanaflag = TRUE;
 	}
+
+	if(playSFXWhenLevelUp)
+		PlaySFX(IS_QUESTDN);
 }
 
 void __fastcall AddPlrExperience(int pnum, int lvl, int exp)

@@ -1,5 +1,7 @@
 // some global definitions, found in debug release
 
+#define GIVE_ME_SANCTUARY_VERSION "Give Me Sanctuary-0.0.0.7"
+
 #define DMAXX					40
 #define DMAXY					40
 

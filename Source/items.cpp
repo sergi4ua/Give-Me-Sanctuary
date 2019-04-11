@@ -105,7 +105,7 @@ const PLStruct PL_Prefix[84] = {
 	{ "",  IPL_INVALID,           0,        0,        0, 0                                                              ,  0, FALSE,    FALSE,        0,        0,         0 }
 	// clang-format on
 };
-const PLStruct PL_Suffix[96] = {
+const PLStruct PL_Suffix[97] = {
 	// clang-format off
 	// PLName,         PLPower,       PLParam1, PLParam2, PLMinLvl, PLIType,                                                      PLGOE, PLDouble, PLOk,  PLMinVal, PLMaxVal, PLMultVal
 	{ "quality",       IPL_DAMMOD,           1,        2,        2,                       PLT_WEAP |             PLT_BOW           ,  0, FALSE,    TRUE,       100,      200,         2 },
@@ -143,6 +143,7 @@ const PLStruct PL_Suffix[96] = {
 	{ "sorcery",       IPL_MAG,             16,       20,       17, PLT_ARMO |            PLT_WEAP | PLT_STAFF | PLT_BOW | PLT_MISC,  0, FALSE,    TRUE,      3200,     5000,         7 },
 	{ "wizardry",      IPL_MAG,             21,       30,       23,                                  PLT_STAFF |           PLT_MISC,  0, FALSE,    TRUE,      5200,    10000,        10 },
 	{ "illness",       IPL_VIT_CURSE,        6,       10,        3, PLT_ARMO | PLT_SHLD | PLT_WEAP |             PLT_BOW | PLT_MISC,  1, FALSE,    FALSE,        0,        0,        -3 },
+	{ "despair",       IPL_VIT_CURSE,        5,       9,        2, PLT_ARMO | PLT_SHLD | PLT_WEAP |             PLT_BOW | PLT_MISC,  1, FALSE,    FALSE,        0,        0,        -16 },
 	{ "disease",       IPL_VIT_CURSE,        1,        5,        1, PLT_ARMO | PLT_SHLD | PLT_WEAP |             PLT_BOW | PLT_MISC,  1, FALSE,    FALSE,        0,        0,        -2 },
 	{ "vitality",      IPL_VIT,              1,        5,        1, PLT_ARMO | PLT_SHLD | PLT_WEAP |             PLT_BOW | PLT_MISC, 16, FALSE,    TRUE,       200,     1000,         2 },
 	{ "zest",          IPL_VIT,              6,       10,        5, PLT_ARMO | PLT_SHLD | PLT_WEAP |             PLT_BOW | PLT_MISC, 16, FALSE,    TRUE,      1200,     2000,         3 },

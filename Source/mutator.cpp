@@ -8,7 +8,6 @@
 #include <../types.h>
 
 #include <iostream>
-#include <vector>
 #include <map>
 #include <fstream>
 
@@ -16,10 +15,10 @@ DEVILUTION_BEGIN_NAMESPACE
 
 std::ifstream mutator_file;
 std::ofstream mutator_output;
-std::string devnull;
 
 bool altHightlightingEnabled = false;
 bool monsterHP = false;
+bool playSFXWhenLevelUp = false;
 
 std::map<std::string, bool*> mutator_operators;
 
@@ -28,6 +27,7 @@ void init_mutator()
 	// init the map
 	mutator_operators["enableAltHightlighting"] = &altHightlightingEnabled;
 	mutator_operators["showMonsterHP"] = &monsterHP;
+	mutator_operators["playLevelUpSFX"] = &playSFXWhenLevelUp;
 
 	// init the mutator
 	mutator_file.open("mutator.config", std::ios_base::out);
@@ -48,6 +48,8 @@ void init_mutator()
 	}
 	else
 		read_mutator_file();
+
+	mutator_file.close();
 }
 
 bool create_mutator_file()
@@ -58,10 +60,12 @@ bool create_mutator_file()
 
 	mutator_output << "enableAltHightlighting" << std::endl;
 	mutator_output.flush();
-	mutator_output << "showMonsterHP";
+	mutator_output << "showMonsterHP" << std::endl;
+	mutator_output.flush();
+	mutator_output << "playLevelUpSFX";
 	mutator_output.flush();
 
-	mutator_file.close();
+	mutator_output.close();
 	return true;
 }
 
@@ -85,8 +89,6 @@ void read_mutator_file()
 			*mutator_operators[fileline] = true;
 		}
 	}
-
-	mutator_file.close();
 }
 
 DEVILUTION_END_NAMESPACE

@@ -10,6 +10,7 @@
 
 extern bool altHightlightingEnabled;
 extern bool monsterHP;
+extern bool playSFXWhenLevelUp;
 
 void init_mutator();
 bool create_mutator_file();

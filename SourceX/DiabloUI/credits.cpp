@@ -13,6 +13,19 @@ int lineCount;
 bool creditEnd;
 
 char *the_long_credits[] = {
+	"",
+	"GIVE ME SANCTUARY",
+	"The Credits",
+	"",
+	"Started by:",
+	"Sergi4UA",
+	"",
+	"Programming:",
+	"Sergi4UA, Qndel",
+	"",
+	"Special Thanks:",
+	"Qndel, Ogodei, AJenbo, ApertureSecurity, Blighthorn",
+	"",
 	"Game Design",
 	"	Blizzard North",
 	"",

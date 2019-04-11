@@ -129,7 +129,7 @@ void __fastcall PutItemRecord(int seed, WORD ci, int index);
 /* rdata */
 
 extern const PLStruct PL_Prefix[84];
-extern const PLStruct PL_Suffix[96];
+extern const PLStruct PL_Suffix[97];
 extern const UItemStruct UniqueItemList[91];
 
 /* data */
