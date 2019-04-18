@@ -1086,16 +1086,15 @@ void __cdecl S_StartWitch()
 	AddSLine(5);
 	storenumh = 20;
 
-	if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP || plr[myplr]._pMana != plr[myplr]._pMaxMana) {
+	if(adria_restoreMana) {
+		if (plr[myplr]._pMana != plr[myplr]._pMaxMana) {
 			PlaySFX(IS_CAST8);
-			drawhpflag = TRUE;
 			auto v1 = myplr;
-			plr[v1]._pHitPoints = plr[myplr]._pMaxHP;
-			plr[v1]._pHPBase = plr[v1]._pMaxHPBase;
 			plr[v1]._pMana = plr[myplr]._pMaxMana;
 			plr[v1]._pManaBase = plr[v1]._pMaxManaBase;
 			drawmanaflag = TRUE;
 		}
+	}
 }
 // 69F10C: using guessed type int storenumh;
 // 6A09E0: using guessed type char stextsize;
@@ -1538,15 +1537,20 @@ void __cdecl S_StartHealer()
 	AddSLine(4);
 	storenumh = 20;
 
-	if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP || plr[myplr]._pMana != plr[myplr]._pMaxMana) {
-		PlaySFX(IS_CAST8);
-		drawhpflag = TRUE;
-		auto v1 = myplr;
-		plr[v1]._pHitPoints = plr[myplr]._pMaxHP;
-		plr[v1]._pHPBase = plr[v1]._pMaxHPBase;
-		plr[v1]._pMana = plr[myplr]._pMaxMana;
-		plr[v1]._pManaBase = plr[myplr]._pMaxManaBase;
-		drawmanaflag = TRUE;
+	if(!pepin_noHeal)
+	{
+		if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP || plr[myplr]._pMana != plr[myplr]._pMaxMana) {
+			PlaySFX(IS_CAST8);
+			drawhpflag = TRUE;
+			auto v1 = myplr;
+			plr[v1]._pHitPoints = plr[myplr]._pMaxHP;
+			plr[v1]._pHPBase = plr[v1]._pMaxHPBase;
+			if(pepin_restoreMana) {
+				plr[v1]._pMana = plr[myplr]._pMaxMana;
+				plr[v1]._pManaBase = plr[myplr]._pMaxManaBase;
+				drawmanaflag = TRUE;
+			}
+		}
 	}
 }
 // 69F10C: using guessed type int storenumh;
@@ -3338,12 +3342,13 @@ void __cdecl S_HealerEnter()
 		stextflag = 0;
 	}
 
+	/*
 	if (plr[myplr]._pHitPoints != plr[myplr]._pMaxHP)
 		PlaySFX(IS_CAST8);
 	drawhpflag = TRUE;
 	v1 = myplr;
 	plr[v1]._pHitPoints = plr[myplr]._pMaxHP;
-	plr[v1]._pHPBase = plr[v1]._pMaxHPBase;
+	plr[v1]._pHPBase = plr[v1]._pMaxHPBase;*/
 }
 // 69F110: using guessed type int stextlhold;
 // 69FB38: using guessed type int talker;

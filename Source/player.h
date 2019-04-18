@@ -18,6 +18,8 @@ extern int plr_sframe_size; // idb
 extern int deathdelay;      // weak
 extern int plr_dframe_size; // idb
 
+bool CanRun(int pnum);
+void MakePlayerRun(int pnum);
 void __fastcall SetPlayerGPtrs(UCHAR *pData, UCHAR **pAnim); /* unsigned char *+** */
 void __fastcall LoadPlrGFX(int pnum, player_graphic gfxflag);
 void __fastcall InitPlayerGFX(int pnum);

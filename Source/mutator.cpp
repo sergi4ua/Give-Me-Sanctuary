@@ -19,6 +19,11 @@ std::ofstream mutator_output;
 bool altHightlightingEnabled = false;
 bool monsterHP = false;
 bool playSFXWhenLevelUp = false;
+bool runInTown = false;
+bool adria_restoreMana = false;
+bool pepin_restoreMana = false;
+bool pepin_noHeal = false;
+bool im_noReturn = false;
 
 std::map<std::string, bool*> mutator_operators;
 
@@ -28,6 +33,11 @@ void init_mutator()
 	mutator_operators["enableAltHightlighting"] = &altHightlightingEnabled;
 	mutator_operators["showMonsterHP"] = &monsterHP;
 	mutator_operators["playLevelUpSFX"] = &playSFXWhenLevelUp;
+	mutator_operators["runInTown"] = &runInTown;
+	mutator_operators["adria_restoreMana"] = &adria_restoreMana;
+	mutator_operators["pepin_restoreMana"] = &pepin_restoreMana;
+	mutator_operators["pepin_noHeal"] = &pepin_noHeal;
+	mutator_operators["im_noReturn"] = &im_noReturn;
 
 	// init the mutator
 	mutator_file.open("mutator.config", std::ios_base::out);
@@ -62,7 +72,9 @@ bool create_mutator_file()
 	mutator_output.flush();
 	mutator_output << "showMonsterHP" << std::endl;
 	mutator_output.flush();
-	mutator_output << "playLevelUpSFX";
+	mutator_output << "playLevelUpSFX" << std::endl;
+	mutator_output.flush();
+	mutator_output << "runInTown";
 	mutator_output.flush();
 
 	mutator_output.close();

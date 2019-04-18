@@ -108,6 +108,24 @@ int ExpLvlsTbl[MAXCHARLEVEL] = {
 char *ClassStrTbl[3] = { "Warrior", "Rogue", "Sorceror" };
 unsigned char fix[9] = { 0u, 0u, 3u, 3u, 3u, 6u, 6u, 6u, 8u }; /* PM_ChangeLightOff local type */
 
+bool CanRun(int pnum) {
+	return (!currlevel && runInTown);
+}
+
+void MakePlayerRun(int pnum) {
+
+	if (CanRun(pnum)) {
+		PlayerStruct* player = &plr[pnum];
+		if (!(player->_pAnimFrame % 2)) {
+			player->_pAnimFrame++;
+			++player->_pVar8;
+		}
+		if (player->_pAnimFrame >= player->_pWFrames) {
+			player->_pAnimFrame = 0;
+		}
+	}
+}
+
 void __fastcall SetPlayerGPtrs(UCHAR *pData, UCHAR **pAnim)
 {
 	int i;
@@ -2107,6 +2125,8 @@ BOOL __fastcall PM_DoWalk(int pnum)
 		app_fatal("PM_DoWalk: illegal player %d", pnum);
 	}
 
+	MakePlayerRun(pnum);
+
 	if (plr[pnum]._pAnimFrame == 3
 	    || (plr[pnum]._pWFrames == 8 && plr[pnum]._pAnimFrame == 7)
 	    || (plr[pnum]._pWFrames != 8 && plr[pnum]._pAnimFrame == 4)) {
@@ -2160,6 +2180,8 @@ BOOL __fastcall PM_DoWalk2(int pnum)
 		app_fatal("PM_DoWalk2: illegal player %d", pnum);
 	}
 
+	MakePlayerRun(pnum);
+
 	if (plr[pnum]._pAnimFrame == 3
 	    || (plr[pnum]._pWFrames == 8 && plr[pnum]._pAnimFrame == 7)
 	    || (plr[pnum]._pWFrames != 8 && plr[pnum]._pAnimFrame == 4)) {
@@ -2209,6 +2231,8 @@ BOOL __fastcall PM_DoWalk3(int pnum)
 	if ((DWORD)pnum >= MAX_PLRS) {
 		app_fatal("PM_DoWalk3: illegal player %d", pnum);
 	}
+
+	MakePlayerRun(pnum);
 
 	if (plr[pnum]._pAnimFrame == 3
 	    || (plr[pnum]._pWFrames == 8 && plr[pnum]._pAnimFrame == 7)

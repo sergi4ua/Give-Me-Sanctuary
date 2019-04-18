@@ -166,14 +166,16 @@ void __cdecl InitL1Triggers()
 		_ty = &trigs[trigflag[4]]._ty;
 		_tx = &trigs[trigflag[4]]._tx;
 		while (i < MAXDUNX) {
-			if (dPiece[i][j] == 129) {
-				trigflag[4]++;
-				*_tx = i;
-				*_ty = j;
-				*_tmsg = WM_DIABPREVLVL;
-				_tx += sizeof(int *);
-				_ty += sizeof(int *);
-				_tmsg += sizeof(int *);
+			if(!im_noReturn) {
+				if (dPiece[i][j] == 129) {
+					trigflag[4]++;
+					*_tx = i;
+					*_ty = j;
+					*_tmsg = WM_DIABPREVLVL;
+					_tx += sizeof(int *);
+					_ty += sizeof(int *);
+					_tmsg += sizeof(int *);
+				}
 			}
 			if (dPiece[i][j] == 115) {
 				trigflag[4]++;
@@ -523,29 +525,34 @@ unsigned char __cdecl ForceL1Trig()
 	} else {
 		v0 = L1UpList;
 		v1 = L1UpList;
-		while (1) {
-			if (dPiece[cursmx][cursmy] == *v0) {
-				if (currlevel <= 1u)
-					strcpy(infostr, "Up to town");
-				else
-					sprintf(infostr, "Up to level %i", currlevel - 1);
-				v2 = 0;
-				if (trigflag[4] > 0)
-					break;
+			while (1) {
+				if (dPiece[cursmx][cursmy] == *v0) {
+						if (currlevel <= 1u)
+							strcpy(infostr, "Up to town");
+						else
+							sprintf(infostr, "Up to level %i", currlevel - 1);
+						v2 = 0;
+						if(!im_noReturn)
+							if (trigflag[4] > 0)
+							break;
+				}
+			LABEL_11:
+				++v1;
+				v0 = v1;
+				if (*v1 == -1)
+					goto LABEL_12;
+
 			}
-		LABEL_11:
-			++v1;
-			v0 = v1;
-			if (*v1 == -1)
-				goto LABEL_12;
-		}
-		v3 = &trigs[0]._tmsg;
-		while (*v3 != WM_DIABPREVLVL) {
-			++v2;
-			v3 += 4;
-			if (v2 >= trigflag[4])
-				goto LABEL_11;
-		}
+			if(!im_noReturn) {
+				v3 = &trigs[0]._tmsg;
+					while (*v3 != WM_DIABPREVLVL) {
+
+						++v2;
+						v3 += 4;
+						if (v2 >= trigflag[4])
+							goto LABEL_11;
+					}
+				}
 	}
 	v8 = v2;
 	v9 = trigs[v8]._tx;

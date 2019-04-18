@@ -11,6 +11,11 @@
 extern bool altHightlightingEnabled;
 extern bool monsterHP;
 extern bool playSFXWhenLevelUp;
+extern bool runInTown;
+extern bool adria_restoreMana;
+extern bool pepin_restoreMana;
+extern bool pepin_noHeal;
+extern bool im_noReturn;
 
 void init_mutator();
 bool create_mutator_file();
