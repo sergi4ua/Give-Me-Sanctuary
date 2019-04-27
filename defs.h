@@ -1,6 +1,6 @@
 // some global definitions, found in debug release
 
-#define GIVE_ME_SANCTUARY_VERSION "Give Me Sanctuary-0.0.1\nbased on devilutionX-0.3.1"
+#define GIVE_ME_SANCTUARY_VERSION "Give Me Sanctuary-0.0.1.1\nbased on devilutionX-0.3.1"
 
 #define DMAXX					40
 #define DMAXY					40

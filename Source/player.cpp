@@ -1221,8 +1221,11 @@ void __fastcall PM_ChangeOffset(int pnum)
 	px = plr[pnum]._pVar6 >> 8;
 	py = plr[pnum]._pVar7 >> 8;
 
-	plr[pnum]._pVar6 += plr[pnum]._pxvel;
-	plr[pnum]._pVar7 += plr[pnum]._pyvel;
+	// thx qndel :P
+		// makes the player run properly
+	int mul = CanRun(pnum) ? 2 : 1;
+	plr[pnum]._pVar6 += plr[pnum]._pxvel*mul;
+	plr[pnum]._pVar7 += plr[pnum]._pyvel*mul;
 	plr[pnum]._pxoff = plr[pnum]._pVar6 >> 8;
 	plr[pnum]._pyoff = plr[pnum]._pVar7 >> 8;
 
