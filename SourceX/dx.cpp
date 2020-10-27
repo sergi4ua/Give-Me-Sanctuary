@@ -1,467 +1,308 @@
-#include "dx.h"
-
-#include "devilution.h"
-#include "stubs.h"
-#include "DiabloUI/diabloui.h"
+/**
+ * @file dx.cpp
+ *
+ * Implementation of functions setting up the graphics pipeline.
+ */
+#include "all.h"
+#include "../3rdParty/Storm/Source/storm.h"
+#include "display.h"
+#include <SDL.h>
 
 namespace dvl {
 
+int sgdwLockCount;
 BYTE *gpBuffer;
+#ifdef _DEBUG
+int locktbl[256];
+#endif
+static CCritSect sgMemCrit;
 
-IDirectDraw *lpDDInterface;
-IDirectDrawSurface *lpDDSPrimary;
-IDirectDrawSurface *lpDDSBackBuf;
-IDirectDrawPalette *lpDDPalette;
-
-char gbBackBuf; // unread
-char gbEmulate; // unread
-
-SDL_Window *window;
+int vsyncEnabled;
+int refreshDelay;
 SDL_Renderer *renderer;
 SDL_Texture *texture;
 
-/** 32-bit in-memory backbuffer surface */
-SDL_Surface *surface;
+/** Currently active palette */
+SDL_Palette *palette;
+unsigned int pal_surface_palette_version = 0;
+
+/** 24-bit renderer texture surface */
+SDL_Surface *renderer_texture_surface = NULL;
 
 /** 8-bit surface wrapper around #gpBuffer */
 SDL_Surface *pal_surface;
-/** Currently active palette */
-SDL_Palette *palette;
 
-/**
- * Is #sdl_pal_surface dirty?
- *
- * This is required so the front buffer would not be updated twice per game loop in unlock_buf_priv().
- */
-bool surface_dirty;
+/** To know if surfaces have been initialized or not */
+BOOL was_window_init = false;
 
-//
-// DirectDraw COM interface stub implementations
-//
-
-class StubSurface : public IDirectDrawSurface {
-	virtual ULONG Release()
-	{
-		UNIMPLEMENTED();
-	};
-
-	virtual HRESULT AddAttachedSurface(LPDIRECTDRAWSURFACE lpDDSAttachedSurface)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT AddOverlayDirtyRect(LPRECT lpRect)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT Blt(LPRECT lpDestRect, LPDIRECTDRAWSURFACE lpDDSrcSurface, LPRECT lpSrcRect, DWORD dwFlags,
-	    LPDDBLTFX lpDDBltFx)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT BltBatch(LPDDBLTBATCH lpDDBltBatch, DWORD dwCount, DWORD dwFlags)
-	{
-		UNIMPLEMENTED();
+static void dx_create_back_buffer()
+{
+	pal_surface = SDL_CreateRGBSurfaceWithFormat(0, BUFFER_WIDTH, BUFFER_HEIGHT, 8, SDL_PIXELFORMAT_INDEX8);
+	if (pal_surface == NULL) {
+		ErrSdl();
 	}
 
-	virtual HRESULT BltFast(DWORD dwX, DWORD dwY, LPDIRECTDRAWSURFACE lpDDSrcSurface, LPRECT lpSrcRect, DWORD dwTrans)
-	{
-		DUMMY_ONCE();
+	gpBuffer = (BYTE *)pal_surface->pixels;
 
-		assert(lpDDSrcSurface == lpDDSBackBuf);
+#ifndef USE_SDL1
+	// In SDL2, `pal_surface` points to the global `palette`.
+	if (SDL_SetSurfacePalette(pal_surface, palette) < 0)
+		ErrSdl();
+#else
+	// In SDL1, `pal_surface` owns its palette and we must update it every
+	// time the global `palette` is changed. No need to do anything here as
+	// the global `palette` doesn't have any colors set yet.
+#endif
 
-		int w = lpSrcRect->right - lpSrcRect->left + 1;
-		int h = lpSrcRect->bottom - lpSrcRect->top + 1;
+	pal_surface_palette_version = 1;
+}
 
-		SDL_Rect src_rect = { lpSrcRect->left, lpSrcRect->top, w, h };
-		SDL_Rect dst_rect = { (int)dwX, (int)dwY, w, h };
-
-		// Convert from 8-bit to 32-bit
-		if (SDL_BlitSurface(pal_surface, &src_rect, surface, &dst_rect) != 0) {
-			SDL_Log("SDL_BlitSurface: %s\n", SDL_GetError());
-			return DVL_E_FAIL;
-		}
-
-		surface_dirty = true;
-		return DVL_S_OK;
+static void dx_create_primary_surface()
+{
+#ifndef USE_SDL1
+	if (renderer) {
+		int width, height;
+		SDL_RenderGetLogicalSize(renderer, &width, &height);
+		Uint32 format;
+		if (SDL_QueryTexture(texture, &format, NULL, NULL, NULL) < 0)
+			ErrSdl();
+		renderer_texture_surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, SDL_BITSPERPIXEL(format), format);
 	}
-
-	virtual HRESULT DeleteAttachedSurface(DWORD dwFlags, LPDIRECTDRAWSURFACE lpDDSAttachedSurface)
-	{
-		UNIMPLEMENTED();
+#endif
+	if (GetOutputSurface() == NULL) {
+		ErrSdl();
 	}
-	virtual HRESULT EnumAttachedSurfaces(LPVOID lpContext, LPDDENUMSURFACESCALLBACK lpEnumSurfacesCallback)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT EnumOverlayZOrders(DWORD dwFlags, LPVOID lpContext, LPDDENUMSURFACESCALLBACK lpfnCallback)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT Flip(LPDIRECTDRAWSURFACE lpDDSurfaceTargetOverride, DWORD dwFlags)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetAttachedSurface(LPDDSCAPS lpDDSCaps, LPDIRECTDRAWSURFACE *lplpDDAttachedSurface)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetBltStatus(DWORD dwFlags)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetCaps(LPDDSCAPS lpDDSCaps)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetClipper(LPDIRECTDRAWCLIPPER *lplpDDClipper)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetColorKey(DWORD dwFlags, LPDDCOLORKEY lpDDColorKey)
-	{
-		UNIMPLEMENTED();
-	}
-
-	virtual HRESULT GetDC(HDC *lphDC)
-	{
-		DUMMY_ONCE();
-		return DVL_S_OK;
-	}
-
-	virtual HRESULT GetFlipStatus(DWORD dwFlags)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetOverlayPosition(LPLONG lplX, LPLONG lplY)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetPalette(LPDIRECTDRAWPALETTE *lplpDDPalette)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetPixelFormat(LPDDPIXELFORMAT lpDDPixelFormat)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetSurfaceDesc(LPDDSURFACEDESC lpDDSurfaceDesc)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT Initialize(LPDIRECTDRAW lpDD, LPDDSURFACEDESC lpDDSurfaceDesc)
-	{
-		UNIMPLEMENTED();
-	}
-
-	virtual HRESULT IsLost()
-	{
-		DUMMY_ONCE();
-		return DVL_S_OK;
-	}
-
-	virtual HRESULT Lock(LPRECT lpDestRect, LPDDSURFACEDESC lpDDSurfaceDesc, DWORD dwFlags, HANDLE hEvent)
-	{
-		UNIMPLEMENTED();
-	}
-
-	virtual HRESULT ReleaseDC(HDC hDC)
-	{
-		DUMMY_ONCE();
-		return DVL_S_OK;
-	}
-
-	virtual HRESULT Restore()
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT SetClipper(LPDIRECTDRAWCLIPPER lpDDClipper)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT SetColorKey(DWORD dwFlags, LPDDCOLORKEY lpDDColorKey)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT SetOverlayPosition(LONG lX, LONG lY)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT SetPalette(LPDIRECTDRAWPALETTE lpDDPalette)
-	{
-		DUMMY();
-		return DVL_S_OK;
-	}
-	virtual HRESULT Unlock(LPVOID lpSurfaceData)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT UpdateOverlay(LPRECT lpSrcRect, LPDIRECTDRAWSURFACE lpDDDestSurface, LPRECT lpDestRect,
-	    DWORD dwFlags, LPDDOVERLAYFX lpDDOverlayFx)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT UpdateOverlayDisplay(DWORD dwFlags)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT UpdateOverlayZOrder(DWORD dwFlags, LPDIRECTDRAWSURFACE lpDDSReference)
-	{
-		UNIMPLEMENTED();
-	}
-};
-
-class StubPalette : public IDirectDrawPalette {
-	virtual ULONG Release()
-	{
-		UNIMPLEMENTED();
-	};
-
-	virtual HRESULT GetCaps(LPDWORD lpdwCaps)
-	{
-		UNIMPLEMENTED();
-	};
-	virtual HRESULT GetEntries(DWORD dwFlags, DWORD dwBase, DWORD dwNumEntries, LPPALETTEENTRY lpEntries)
-	{
-		for (int i = 0; i < dwNumEntries; i++) {
-			lpEntries[i].peFlags = 0;
-			lpEntries[i].peRed = system_palette[i].peRed;
-			lpEntries[i].peGreen = system_palette[i].peGreen;
-			lpEntries[i].peBlue = system_palette[i].peBlue;
-		}
-		return DVL_S_OK;
-	};
-	virtual HRESULT Initialize(LPDIRECTDRAW lpDD, DWORD dwFlags, LPPALETTEENTRY lpDDColorTable)
-	{
-		UNIMPLEMENTED();
-	};
-	virtual HRESULT SetEntries(DWORD dwFlags, DWORD dwStartingEntry, DWORD dwCount, LPPALETTEENTRY lpEntries)
-	{
-		for (int i = 0; i < dwCount; i++) {
-			system_palette[i].peFlags = 0;
-			system_palette[i].peRed = lpEntries[i].peRed;
-			system_palette[i].peGreen = lpEntries[i].peGreen;
-			system_palette[i].peBlue = lpEntries[i].peBlue;
-		}
-		palette_update();
-		return DVL_S_OK;
-	};
-};
-
-class StubDraw : public IDirectDraw {
-	virtual ULONG Release()
-	{
-		UNIMPLEMENTED();
-	};
-
-	virtual HRESULT Compact()
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT CreateClipper(DWORD dwFlags, LPDIRECTDRAWCLIPPER *lplpDDClipper, IUnknown *pUnkOuter)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT CreatePalette(DWORD dwFlags, LPPALETTEENTRY lpColorTable, LPDIRECTDRAWPALETTE *lplpDDPalette,
-	    IUnknown *pUnkOuter)
-	{
-		DUMMY();
-		return DVL_S_OK;
-	}
-	virtual HRESULT CreateSurface(LPDDSURFACEDESC lpDDSurfaceDesc, LPDIRECTDRAWSURFACE *lplpDDSurface,
-	    IUnknown *pUnkOuter)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT DuplicateSurface(LPDIRECTDRAWSURFACE lpDDSurface, LPDIRECTDRAWSURFACE *lplpDupDDSurface)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT EnumDisplayModes(DWORD dwFlags, LPDDSURFACEDESC lpDDSurfaceDesc, LPVOID lpContext,
-	    LPDDENUMMODESCALLBACK lpEnumModesCallback)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT EnumSurfaces(DWORD dwFlags, LPDDSURFACEDESC lpDDSD, LPVOID lpContext,
-	    LPDDENUMSURFACESCALLBACK lpEnumSurfacesCallback)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT FlipToGDISurface()
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetCaps(LPDDCAPS lpDDDriverCaps, LPDDCAPS lpDDHELCaps)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetDisplayMode(LPDDSURFACEDESC lpDDSurfaceDesc)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetFourCCCodes(LPDWORD lpNumCodes, LPDWORD lpCodes)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetGDISurface(LPDIRECTDRAWSURFACE *lplpGDIDDSurface)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetMonitorFrequency(LPDWORD lpdwFrequency)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetScanLine(LPDWORD lpdwScanLine)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT GetVerticalBlankStatus(BOOL *lpbIsInVB)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT Initialize(GUID *lpGUID)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT RestoreDisplayMode()
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT SetCooperativeLevel(HWND hWnd, DWORD dwFlags)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT SetDisplayMode(DWORD dwWidth, DWORD dwHeight, DWORD dwBPP)
-	{
-		UNIMPLEMENTED();
-	}
-	virtual HRESULT WaitForVerticalBlank(DWORD dwFlags, HANDLE hEvent)
-	{
-		DUMMY_ONCE();
-		return DVL_S_OK;
-	}
-};
-
-static StubDraw stub_draw;
-static StubSurface stub_surface;
-static StubPalette stub_palette;
-
-//
-// Main functions
-//
+}
 
 void dx_init(HWND hWnd)
 {
-	DUMMY();
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-	if (renderer == NULL) {
-		SDL_Log("SDL_CreateRenderer: %s\n", SDL_GetError());
-		return;
-	}
+	SDL_RaiseWindow(ghMainWnd);
+	SDL_ShowWindow(ghMainWnd);
 
-	char scaleQuality[2] = "2";
-	DvlStringSetting("scaling quality", scaleQuality, 2);
-
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, scaleQuality);
-	if (SDL_RenderSetLogicalSize(renderer, SCREEN_WIDTH, SCREEN_HEIGHT) != 0) {
-		SDL_Log("SDL_RenderSetLogicalSize: %s\n", SDL_GetError());
-		return;
-	}
-
-	surface = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
-	if (surface == NULL) {
-		SDL_Log("SDL_CreateRGBSurface: %s\n", SDL_GetError());
-		return;
-	}
-
-	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
-	if (texture == NULL) {
-		SDL_Log("SDL_CreateTexture: %s\n", SDL_GetError());
-		return;
-	}
-
-	palette = SDL_AllocPalette(256);
-	if (palette == NULL) {
-		SDL_Log("SDL_AllocPalette: %s\n", SDL_GetError());
-		return;
-	}
-
-	const int pitch = 64 + SCREEN_WIDTH + 64;
-	gpBuffer = (BYTE *)malloc(656 * 768);
-	gpBufEnd += (uintptr_t)gpBuffer;
-
-	pal_surface = SDL_CreateRGBSurfaceFrom(gpBuffer, pitch, 160 + SCREEN_HEIGHT + 16, 8, pitch, 0, 0, 0, 0);
-	if (pal_surface == NULL) {
-		SDL_Log("SDL_CreateRGBSurfaceFrom: %s\n", SDL_GetError());
-		return;
-	}
-
-	if (SDL_SetSurfacePalette(pal_surface, palette) != 0) {
-		SDL_Log("SDL_SetSurfacePalette: %s\n", SDL_GetError());
-		return;
-	}
-
-	MainWndProc(NULL, DVL_WM_ACTIVATEAPP, true, 0);
-
-	lpDDInterface = &stub_draw;
-	lpDDSPrimary = &stub_surface;
-	lpDDSBackBuf = &stub_surface;
-	lpDDPalette = &stub_palette;
+	dx_create_primary_surface();
 	palette_init();
+	dx_create_back_buffer();
+}
+static void lock_buf_priv()
+{
+	sgMemCrit.Enter();
+	if (sgdwLockCount != 0) {
+		sgdwLockCount++;
+		return;
+	}
+
+	gpBuffer = (BYTE *)pal_surface->pixels;
+	gpBufEnd += (uintptr_t)(BYTE *)pal_surface->pixels;
+	sgdwLockCount++;
+}
+
+void lock_buf(BYTE idx)
+{
+#ifdef _DEBUG
+	++locktbl[idx];
+#endif
+	lock_buf_priv();
+}
+
+static void unlock_buf_priv()
+{
+	if (sgdwLockCount == 0)
+		app_fatal("draw main unlock error");
+	if (gpBuffer == NULL)
+		app_fatal("draw consistency error");
+
+	sgdwLockCount--;
+	if (sgdwLockCount == 0) {
+		gpBufEnd -= (uintptr_t)gpBuffer;
+	}
+	sgMemCrit.Leave();
+}
+
+void unlock_buf(BYTE idx)
+{
+#ifdef _DEBUG
+	if (!locktbl[idx])
+		app_fatal("Draw lock underflow: 0x%x", idx);
+	--locktbl[idx];
+#endif
+	unlock_buf_priv();
 }
 
 void dx_cleanup()
 {
-	DUMMY();
-}
+	if (ghMainWnd)
+		SDL_HideWindow(ghMainWnd);
+	sgMemCrit.Enter();
+	sgdwLockCount = 0;
+	gpBuffer = NULL;
+	sgMemCrit.Leave();
 
-/** Copy the palette surface to the main backbuffer */
-void sdl_update_entire_surface()
-{
-	assert(surface && pal_surface);
-	SDL_Rect src_rect = { 64, 160, SCREEN_WIDTH, SCREEN_HEIGHT };
-	if (SDL_BlitSurface(pal_surface, &src_rect, surface, NULL) != 0) {
-		SDL_Log("SDL_BlitSurface: %s\n", SDL_GetError());
-	}
-}
-
-void sdl_present_surface()
-{
-	assert(!SDL_MUSTLOCK(surface));
-	if (SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch) != 0) { //pitch is 2560
-		SDL_Log("SDL_UpdateTexture: %s\n", SDL_GetError());
-	}
-
-	// Clear the entire screen to our selected color.
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	SDL_RenderClear(renderer);
-
-	if (SDL_RenderCopy(renderer, texture, NULL, NULL) != 0) {
-		SDL_Log("SDL_RenderCopy: %s\n", SDL_GetError());
-	}
-	SDL_RenderPresent(renderer);
-
-	surface_dirty = false;
-}
-
-void j_lock_buf_priv(BYTE idx)
-{
-	j_unlock_buf_priv(idx); // what is idx?
-}
-
-void j_unlock_buf_priv(BYTE idx)
-{
-	gpBufEnd -= (uintptr_t)gpBufEnd;
-
-	if (!surface_dirty) {
+	if (pal_surface == NULL)
 		return;
-	}
-
-	sdl_present_surface();
+	SDL_FreeSurface(pal_surface);
+	pal_surface = NULL;
+	SDL_FreePalette(palette);
+	SDL_FreeSurface(renderer_texture_surface);
+	SDL_DestroyTexture(texture);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(ghMainWnd);
 }
 
 void dx_reinit()
 {
-	UNIMPLEMENTED();
+#ifdef USE_SDL1
+	ghMainWnd = SDL_SetVideoMode(0, 0, 0, ghMainWnd->flags ^ SDL_FULLSCREEN);
+	if (ghMainWnd == NULL) {
+		ErrSdl();
+	}
+#else
+	Uint32 flags = 0;
+	if (!fullscreen) {
+		flags = renderer ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_FULLSCREEN;
+	}
+	if (SDL_SetWindowFullscreen(ghMainWnd, flags)) {
+		ErrSdl();
+	}
+#endif
+	fullscreen = !fullscreen;
+	force_redraw = 255;
 }
 
+void InitPalette()
+{
+	palette = SDL_AllocPalette(256);
+	if (palette == NULL) {
+		ErrSdl();
+	}
+}
+
+void BltFast(SDL_Rect *src_rect, SDL_Rect *dst_rect)
+{
+	Blit(pal_surface, src_rect, dst_rect);
+}
+
+void Blit(SDL_Surface *src, SDL_Rect *src_rect, SDL_Rect *dst_rect)
+{
+	SDL_Surface *dst = GetOutputSurface();
+#ifndef USE_SDL1
+	if (SDL_BlitSurface(src, src_rect, dst, dst_rect) < 0)
+			ErrSdl();
+		return;
+#else
+	if (!OutputRequiresScaling()) {
+		if (SDL_BlitSurface(src, src_rect, dst, dst_rect) < 0)
+			ErrSdl();
+		return;
+	}
+
+	SDL_Rect scaled_dst_rect;
+	if (dst_rect != NULL) {
+		scaled_dst_rect = *dst_rect;
+		ScaleOutputRect(&scaled_dst_rect);
+		dst_rect = &scaled_dst_rect;
+	}
+
+	// Same pixel format: We can call BlitScaled directly.
+	if (SDLBackport_PixelFormatFormatEq(src->format, dst->format)) {
+		if (SDL_BlitScaled(src, src_rect, dst, dst_rect) < 0)
+			ErrSdl();
+		return;
+	}
+
+	// If the surface has a color key, we must stretch first and can then call BlitSurface.
+	if (SDL_HasColorKey(src)) {
+		SDL_Surface *stretched = SDL_CreateRGBSurface(SDL_SWSURFACE, dst_rect->w, dst_rect->h, src->format->BitsPerPixel,
+		    src->format->Rmask, src->format->Gmask, src->format->BitsPerPixel, src->format->Amask);
+		SDL_SetColorKey(stretched, SDL_SRCCOLORKEY, src->format->colorkey);
+		if (src->format->palette != NULL)
+			SDL_SetPalette(stretched, SDL_LOGPAL, src->format->palette->colors, 0, src->format->palette->ncolors);
+		SDL_Rect stretched_rect = { 0, 0, dst_rect->w, dst_rect->h };
+		if (SDL_SoftStretch(src, src_rect, stretched, &stretched_rect) < 0
+		    || SDL_BlitSurface(stretched, &stretched_rect, dst, dst_rect) < 0) {
+			SDL_FreeSurface(stretched);
+			ErrSdl();
+		}
+		SDL_FreeSurface(stretched);
+		return;
+	}
+
+	// A surface with a non-output pixel format but without a color key needs scaling.
+	// We can convert the format and then call BlitScaled.
+	SDL_Surface *converted = SDL_ConvertSurface(src, dst->format, 0);
+	if (SDL_BlitScaled(converted, src_rect, dst, dst_rect) < 0) {
+		SDL_FreeSurface(converted);
+		ErrSdl();
+	}
+	SDL_FreeSurface(converted);
+#endif
+}
+
+/**
+ * @brief Limit FPS to avoid high CPU load, use when v-sync isn't available
+ */
+void LimitFrameRate()
+{
+	static uint32_t frameDeadline;
+	uint32_t tc = SDL_GetTicks() * 1000;
+	uint32_t v = 0;
+	if (frameDeadline > tc) {
+		v = tc % refreshDelay;
+		SDL_Delay(v / 1000 + 1); // ceil
+	}
+	frameDeadline = tc + v + refreshDelay;
+}
+
+void RenderPresent()
+{
+	SDL_Surface *surface = GetOutputSurface();
+	assert(!SDL_MUSTLOCK(surface));
+
+	if (!gbActive) {
+		LimitFrameRate();
+		return;
+	}
+
+#ifndef USE_SDL1
+	if (renderer) {
+		if (SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch) <= -1) { //pitch is 2560
+			ErrSdl();
+		}
+
+		// Clear buffer to avoid artifacts in case the window was resized
+		if (SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255) <= -1) { // TODO only do this if window was resized
+			ErrSdl();
+		}
+
+		if (SDL_RenderClear(renderer) <= -1) {
+			ErrSdl();
+		}
+
+		if (SDL_RenderCopy(renderer, texture, NULL, NULL) <= -1) {
+			ErrSdl();
+		}
+		SDL_RenderPresent(renderer);
+
+		if (!vsyncEnabled) {
+			LimitFrameRate();
+		}
+	} else {
+		if (SDL_UpdateWindowSurface(ghMainWnd) <= -1) {
+			ErrSdl();
+		}
+		LimitFrameRate();
+	}
+#else
+	if (SDL_Flip(surface) <= -1) {
+		ErrSdl();
+	}
+	LimitFrameRate();
+#endif
+}
+
+void PaletteGetEntries(DWORD dwNumEntries, SDL_Color *lpEntries)
+{
+	for (DWORD i = 0; i < dwNumEntries; i++) {
+		lpEntries[i] = system_palette[i];
+	}
+}
 } // namespace dvl

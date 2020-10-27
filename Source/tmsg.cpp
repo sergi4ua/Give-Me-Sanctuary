@@ -1,12 +1,15 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file tmsg.cpp
+ *
+ * Implementation of functionality transmitting chat messages.
+ */
+#include "all.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
 static TMsg *sgpTimedMsgHead;
 
-int __fastcall tmsg_get(BYTE *pbMsg, DWORD dwMaxLen)
+int tmsg_get(BYTE *pbMsg, DWORD dwMaxLen)
 {
 	int len;
 	TMsg *head;
@@ -14,7 +17,7 @@ int __fastcall tmsg_get(BYTE *pbMsg, DWORD dwMaxLen)
 	if (!sgpTimedMsgHead)
 		return 0;
 
-	if ((int)(sgpTimedMsgHead->hdr.dwTime - GetTickCount()) >= 0)
+	if ((int)(sgpTimedMsgHead->hdr.dwTime - SDL_GetTicks()) >= 0)
 		return 0;
 	head = sgpTimedMsgHead;
 	sgpTimedMsgHead = head->hdr.pNext;
@@ -25,13 +28,13 @@ int __fastcall tmsg_get(BYTE *pbMsg, DWORD dwMaxLen)
 	return len;
 }
 
-void __fastcall tmsg_add(BYTE *pbMsg, BYTE bLen)
+void tmsg_add(BYTE *pbMsg, BYTE bLen)
 {
 	TMsg **tail;
 
 	TMsg *msg = (TMsg *)DiabloAllocPtr(bLen + sizeof(*msg));
 	msg->hdr.pNext = NULL;
-	msg->hdr.dwTime = GetTickCount() + 500;
+	msg->hdr.dwTime = SDL_GetTicks() + 500;
 	msg->hdr.bLen = bLen;
 	memcpy(msg->body, pbMsg, bLen);
 	for (tail = &sgpTimedMsgHead; *tail; tail = &(*tail)->hdr.pNext) {
@@ -40,16 +43,20 @@ void __fastcall tmsg_add(BYTE *pbMsg, BYTE bLen)
 	*tail = msg;
 }
 
-void *__cdecl tmsg_cleanup()
+void tmsg_start()
 {
+	assert(!sgpTimedMsgHead);
+}
+
+void tmsg_cleanup()
+{
+	TMsg *next;
+
 	while (sgpTimedMsgHead) {
-		TMsg *next = sgpTimedMsgHead->hdr.pNext;
-		TMsg *head = sgpTimedMsgHead;
-		sgpTimedMsgHead = NULL;
-		mem_free_dbg(head);
+		next = sgpTimedMsgHead->hdr.pNext;
+		MemFreeDbg(sgpTimedMsgHead);
 		sgpTimedMsgHead = next;
 	}
-	return sgpTimedMsgHead;
 }
 
 DEVILUTION_END_NAMESPACE

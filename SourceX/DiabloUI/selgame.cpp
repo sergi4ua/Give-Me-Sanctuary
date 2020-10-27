@@ -1,11 +1,16 @@
 #include "selgame.h"
 
-#include "devilution.h"
+#include "all.h"
+#include "config.h"
 #include "DiabloUI/diabloui.h"
+#include "DiabloUI/text.h"
+#include "DiabloUI/dialogs.h"
+#include "DiabloUI/selok.h"
+#include "DiabloUI/selhero.h"
 
 namespace dvl {
 
-char selgame_Lable[32];
+char selgame_Label[32];
 char selgame_Ip[129] = "";
 char selgame_Password[16] = "";
 char selgame_Description[256];
@@ -14,65 +19,43 @@ int selgame_selectedGame;
 bool selgame_endMenu;
 int *gdwPlayerId;
 int gbDifficulty;
+int gbTickRate;
+int heroLevel;
 
 static _SNETPROGRAMDATA *m_client_info;
-extern DWORD provider;
+extern int provider;
 
-UI_Item SELUDPGAME_DIALOG[] = {
-	{ { 0, 0, 640, 480 }, UI_IMAGE, 0, 0, NULL, &ArtBackground },
-	{ { 24, 161, 590, 35 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Join TCP/UDP Games" },
-	{ { 35, 211, 205, 33 }, UI_TEXT, UIS_MED, 0, "Description:" },
-	{ { 35, 256, 205, 192 }, UI_TEXT, 0, 0, selgame_Description }, // Description
-	{ { 300, 211, 295, 33 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Select Action" },
-	{ { 305, 255, 285, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD, 0, "Create Game" },
-	{ { 305, 281, 285, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD, 1, "Enter IP" },
-	{ { 305, 307, 285, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD },
-	{ { 305, 333, 285, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD },
-	{ { 305, 359, 285, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD },
-	{ { 305, 385, 285, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD },
-	{ { 299, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "OK", (void *)UiFocusNavigationSelect },
-	{ { 449, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "Cancel", (void *)UiFocusNavigationEsc },
-};
+#define DESCRIPTION_WIDTH 205
 
-UI_Item SELDIFF_DIALOG[] = {
-	{ { 0, 0, 640, 480 }, UI_IMAGE, 0, 0, NULL, &ArtBackground },
-	{ { 24, 161, 590, 35 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Create Game" },
-	{ { 34, 211, 205, 33 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, selgame_Lable }, // DIFF
-	{ { 35, 256, 205, 192 }, UI_TEXT, 0, 0, selgame_Description },             // Description
-	{ { 299, 211, 295, 35 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Select Difficulty" },
-	{ { 300, 282, 295, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD, DIFF_NORMAL, "Normal" },
-	{ { 300, 308, 295, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD, DIFF_NIGHTMARE, "Nightmare" },
-	{ { 300, 334, 295, 26 }, UI_LIST, UIS_CENTER | UIS_MED | UIS_GOLD, DIFF_HELL, "Hell" },
-	{ { 299, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "OK", (void *)UiFocusNavigationSelect },
-	{ { 449, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "Cancel", (void *)UiFocusNavigationEsc },
-};
+namespace {
 
-UI_Item ENTERIP_DIALOG[] = {
-	{ { 0, 0, 640, 480 }, UI_IMAGE, 0, 0, NULL, &ArtBackground },
-	{ { 24, 161, 590, 35 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Join TCP/UDP Games" },
-	{ { 35, 211, 205, 33 }, UI_TEXT, UIS_MED, 0, "Description:" },
-	{ { 35, 256, 205, 192 }, UI_TEXT, 0, 0, selgame_Description }, // Description
-	{ { 305, 211, 285, 33 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Enter IP" },
-	{ { 305, 314, 285, 33 }, UI_EDIT, UIS_LIST | UIS_MED | UIS_GOLD, 128, selgame_Ip },
-	{ { 299, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "OK", (void *)UiFocusNavigationSelect },
-	{ { 449, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "Cancel", (void *)UiFocusNavigationEsc },
-};
+char title[32];
 
-UI_Item ENTERPASSWORD_DIALOG[] = {
-	{ { 0, 0, 640, 480 }, UI_IMAGE, 0, 0, NULL, &ArtBackground },
-	{ { 24, 161, 590, 35 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Join TCP/UDP Games" },
-	{ { 35, 211, 205, 33 }, UI_TEXT, UIS_MED, 0, "Description:" },
-	{ { 35, 256, 205, 192 }, UI_TEXT, 0, 0, selgame_Description }, // Description
-	{ { 305, 211, 285, 33 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Enter Password" },
-	{ { 305, 314, 285, 33 }, UI_EDIT, UIS_LIST | UIS_MED | UIS_GOLD, 15, selgame_Password },
-	{ { 299, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "OK", (void *)UiFocusNavigationSelect },
-	{ { 449, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "Cancel", (void *)UiFocusNavigationEsc },
-};
+std::vector<UiListItem *> vecSelGameDlgItems;
+std::vector<UiItemBase *> vecSelGameDialog;
+
+} // namespace
+
+void selgame_FreeVectors()
+{
+	for (std::size_t i = 0; i < vecSelGameDlgItems.size(); i++) {
+		UiListItem *pUIItem = vecSelGameDlgItems[i];
+		delete pUIItem;
+	}
+	vecSelGameDlgItems.clear();
+
+	for (std::size_t i = 0; i < vecSelGameDialog.size(); i++) {
+		UiItemBase *pUIItem = vecSelGameDialog[i];
+		delete pUIItem;
+	}
+	vecSelGameDialog.clear();
+}
 
 void selgame_Free()
 {
-	mem_free_dbg(ArtBackground.data);
-	ArtBackground.data = NULL;
+	ArtBackground.Unload();
+
+	selgame_FreeVectors();
 }
 
 void selgame_GameSelection_Init()
@@ -80,31 +63,69 @@ void selgame_GameSelection_Init()
 	selgame_enteringGame = false;
 	selgame_selectedGame = 0;
 
-	if (provider == 'SCBL') {
+	if (provider == SELCONN_LOOPBACK) {
 		selgame_enteringGame = true;
 		selgame_GameSelection_Select(0);
 		return;
 	}
 
-	SRegLoadString("Phone Book", "Entry1", 0, selgame_Ip, 128);
-	UiInitList(0, 1, selgame_GameSelection_Focus, selgame_GameSelection_Select, selgame_GameSelection_Esc, SELUDPGAME_DIALOG, size(SELUDPGAME_DIALOG));
+	getIniValue("Phone Book", "Entry1", selgame_Ip, 128);
+
+	selgame_FreeVectors();
+
+	UiAddBackground(&vecSelGameDialog);
+	UiAddLogo(&vecSelGameDialog);
+
+	SDL_Rect rect1 = { PANEL_LEFT + 24, (UI_OFFSET_Y + 161), 590, 35 };
+	vecSelGameDialog.push_back(new UiArtText("Client-Server (TCP)", rect1, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect2 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 211), 205, 192 };
+	vecSelGameDialog.push_back(new UiArtText("Description:", rect2, UIS_MED));
+
+	SDL_Rect rect3 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 256), DESCRIPTION_WIDTH, 192 };
+	vecSelGameDialog.push_back(new UiArtText(selgame_Description, rect3));
+
+	SDL_Rect rect4 = { PANEL_LEFT + 300, (UI_OFFSET_Y + 211), 295, 33 };
+	vecSelGameDialog.push_back(new UiArtText("Select Action", rect4, UIS_CENTER | UIS_BIG));
+
+	vecSelGameDlgItems.push_back(new UiListItem("Create Game", 0));
+	vecSelGameDlgItems.push_back(new UiListItem("Join Game", 1));
+
+	vecSelGameDialog.push_back(new UiList(vecSelGameDlgItems, PANEL_LEFT + 305, (UI_OFFSET_Y + 255), 285, 26, UIS_CENTER | UIS_MED | UIS_GOLD));
+
+	SDL_Rect rect5 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelGameDialog.push_back(new UiArtTextButton("OK", &UiFocusNavigationSelect, rect5, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	SDL_Rect rect6 = { PANEL_LEFT + 449, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelGameDialog.push_back(new UiArtTextButton("CANCEL", &UiFocusNavigationEsc, rect6, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	UiInitList(vecSelGameDlgItems.size(), selgame_GameSelection_Focus, selgame_GameSelection_Select, selgame_GameSelection_Esc, vecSelGameDialog);
 }
 
 void selgame_GameSelection_Focus(int value)
 {
-	switch (value) {
+	switch (vecSelGameDlgItems[value]->m_value) {
 	case 0:
-		sprintf(selgame_Description, "Create a new game with a difficulty setting of your choice.");
+		strncpy(selgame_Description, "Create a new game with a difficulty setting of your choice.", sizeof(selgame_Description) - 1);
 		break;
 	case 1:
-		sprintf(selgame_Description, "Enter an IP and join a game already in progress at that address.");
+		strncpy(selgame_Description, "Enter an IP or a hostname and join a game already in progress at that address.", sizeof(selgame_Description) - 1);
 		break;
 	}
+	WordWrapArtStr(selgame_Description, DESCRIPTION_WIDTH);
+}
 
-	for (auto &item : SELUDPGAME_DIALOG) {
-		if (item.caption != NULL && !(item.flags & (UIS_VCENTER | UIS_CENTER)))
-			WordWrap(&item);
-	}
+/**
+ * @brief Load the current hero level from save file
+ * @param pInfo Hero info
+ * @return always true
+ */
+BOOL UpdateHeroLevel(_uiheroinfo *pInfo)
+{
+	if (strcasecmp(pInfo->name, gszHero) == 0)
+		heroLevel = pInfo->level;
+
+	return true;
 }
 
 void selgame_GameSelection_Select(int value)
@@ -112,61 +133,137 @@ void selgame_GameSelection_Select(int value)
 	selgame_enteringGame = true;
 	selgame_selectedGame = value;
 
+	gfnHeroInfo(UpdateHeroLevel);
+
+	selgame_FreeVectors();
+
+	UiAddBackground(&vecSelGameDialog);
+	UiAddLogo(&vecSelGameDialog);
+
+	SDL_Rect rect1 = { PANEL_LEFT + 24, (UI_OFFSET_Y + 161), 590, 35 };
+	vecSelGameDialog.push_back(new UiArtText(title, rect1, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect2 = { PANEL_LEFT + 34, (UI_OFFSET_Y + 211), 205, 33 };
+	vecSelGameDialog.push_back(new UiArtText(selgame_Label, rect2, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect3 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 256), DESCRIPTION_WIDTH, 192 };
+	vecSelGameDialog.push_back(new UiArtText(selgame_Description, rect3));
+
 	switch (value) {
-	case 0:
-		UiInitList(0, 2, selgame_Diff_Focus, selgame_Diff_Select, selgame_Diff_Esc, SELDIFF_DIALOG, size(SELDIFF_DIALOG));
+	case 0: {
+		strncpy(title, "Create Game", sizeof(title) - 1);
+
+		SDL_Rect rect4 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 211), 295, 35 };
+		vecSelGameDialog.push_back(new UiArtText("Select Difficulty", rect4, UIS_CENTER | UIS_BIG));
+
+		vecSelGameDlgItems.push_back(new UiListItem("Normal", DIFF_NORMAL));
+		vecSelGameDlgItems.push_back(new UiListItem("Nightmare", DIFF_NIGHTMARE));
+		vecSelGameDlgItems.push_back(new UiListItem("Hell", DIFF_HELL));
+
+		vecSelGameDialog.push_back(new UiList(vecSelGameDlgItems, PANEL_LEFT + 300, (UI_OFFSET_Y + 282), 295, 26, UIS_CENTER | UIS_MED | UIS_GOLD));
+
+		SDL_Rect rect5 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 427), 140, 35 };
+		vecSelGameDialog.push_back(new UiArtTextButton("OK", &UiFocusNavigationSelect, rect5, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+		SDL_Rect rect6 = { PANEL_LEFT + 449, (UI_OFFSET_Y + 427), 140, 35 };
+		vecSelGameDialog.push_back(new UiArtTextButton("CANCEL", &UiFocusNavigationEsc, rect6, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+		UiInitList(vecSelGameDlgItems.size(), selgame_Diff_Focus, selgame_Diff_Select, selgame_Diff_Esc, vecSelGameDialog, true);
 		break;
-	case 1:
-		UiInitList(0, 0, NULL, selgame_Password_Init, selgame_GameSelection_Init, ENTERIP_DIALOG, size(ENTERIP_DIALOG));
+	}
+	case 1: {
+		strncpy(title, "Join TCP Games", sizeof(title) - 1);
+
+		SDL_Rect rect4 = { PANEL_LEFT + 305, (UI_OFFSET_Y + 211), 285, 33 };
+		vecSelGameDialog.push_back(new UiArtText("Enter address", rect4, UIS_CENTER | UIS_BIG));
+
+		SDL_Rect rect5 = { PANEL_LEFT + 305, (UI_OFFSET_Y + 314), 285, 33 };
+		vecSelGameDialog.push_back(new UiEdit(selgame_Ip, 128, rect5, UIS_MED | UIS_GOLD));
+
+		SDL_Rect rect6 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 427), 140, 35 };
+		vecSelGameDialog.push_back(new UiArtTextButton("OK", &UiFocusNavigationSelect, rect6, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+		SDL_Rect rect7 = { PANEL_LEFT + 449, (UI_OFFSET_Y + 427), 140, 35 };
+		vecSelGameDialog.push_back(new UiArtTextButton("CANCEL", &UiFocusNavigationEsc, rect7, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+		UiInitList(0, NULL, selgame_Password_Init, selgame_GameSelection_Init, vecSelGameDialog);
 		break;
+	}
 	}
 }
 
 void selgame_GameSelection_Esc()
 {
-	UiInitList(0, 0, NULL, NULL, NULL, NULL, 0);
+	UiInitList_clear();
 	selgame_enteringGame = false;
 	selgame_endMenu = true;
 }
 
 void selgame_Diff_Focus(int value)
 {
-	switch (value) {
+	switch (vecSelGameDlgItems[value]->m_value) {
 	case DIFF_NORMAL:
-		sprintf(selgame_Lable, "Normal");
-		sprintf(selgame_Description, "Normal Difficulty\nThis is where a starting character should begin the quest to defeat Diablo.");
+		strncpy(selgame_Label, "Normal", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Normal Difficulty\nThis is where a starting character should begin the quest to defeat Diablo.", sizeof(selgame_Description) - 1);
 		break;
 	case DIFF_NIGHTMARE:
-		sprintf(selgame_Lable, "Nightmare");
-		sprintf(selgame_Description, "Nightmare Difficulty\nThe denizens of the Labyrinth have been bolstered and will prove to be a greater challenge. This is recommended for experienced characters only.");
+		strncpy(selgame_Label, "Nightmare", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Nightmare Difficulty\nThe denizens of the Labyrinth have been bolstered and will prove to be a greater challenge. This is recommended for experienced characters only.", sizeof(selgame_Description) - 1);
 		break;
 	case DIFF_HELL:
-		sprintf(selgame_Lable, "Hell");
-		sprintf(selgame_Description, "Hell Difficulty\nThe most powerful of the underworld's creatures lurk at the gateway into Hell. Only the most experienced characters should venture in this realm.");
+		strncpy(selgame_Label, "Hell", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Hell Difficulty\nThe most powerful of the underworld's creatures lurk at the gateway into Hell. Only the most experienced characters should venture in this realm.", sizeof(selgame_Description) - 1);
 		break;
 	}
+	WordWrapArtStr(selgame_Description, DESCRIPTION_WIDTH);
+}
 
-	for (auto &item : SELDIFF_DIALOG) {
-		if (item.caption != NULL && !(item.flags & (UIS_VCENTER | UIS_CENTER)))
-			WordWrap(&item);
+bool IsDifficultyAllowed(int value)
+{
+	if (value == 0 || (value == 1 && heroLevel >= 20) || (value == 2 && heroLevel >= 30)) {
+		return true;
 	}
+
+	selgame_Free();
+
+	if (value == 1)
+		UiSelOkDialog(title, "Your character must reach level 20 before you can enter a multiplayer game of Nightmare difficulty.", false);
+	if (value == 2)
+		UiSelOkDialog(title, "Your character must reach level 30 before you can enter a multiplayer game of Hell difficulty.", false);
+
+	LoadBackgroundArt("ui_art\\selgame.pcx");
+
+	return false;
 }
 
 void selgame_Diff_Select(int value)
 {
-	gbDifficulty = value;
-
-	if (provider == 'SCBL') {
-		selgame_Password_Select(0);
+	if (selhero_isMultiPlayer && !IsDifficultyAllowed(vecSelGameDlgItems[value]->m_value)) {
+		selgame_GameSelection_Select(0);
 		return;
 	}
 
-	selgame_Password_Init(0);
+	gbDifficulty = value;
+
+	if (!selhero_isMultiPlayer) {
+		selhero_endMenu = true;
+		return;
+	}
+
+	selgame_GameSpeedSelection();
 }
 
 void selgame_Diff_Esc()
 {
-	if (provider == 'SCBL') {
+	if (!selhero_isMultiPlayer) {
+		selgame_Free();
+
+		selhero_Init();
+		selhero_List_Init();
+		return;
+	}
+
+	if (provider == SELCONN_LOOPBACK) {
 		selgame_GameSelection_Esc();
 		return;
 	}
@@ -174,21 +271,132 @@ void selgame_Diff_Esc()
 	selgame_GameSelection_Init();
 }
 
+void selgame_GameSpeedSelection()
+{
+	gfnHeroInfo(UpdateHeroLevel);
+
+	selgame_FreeVectors();
+
+	UiAddBackground(&vecSelGameDialog);
+	UiAddLogo(&vecSelGameDialog);
+
+	SDL_Rect rect1 = { PANEL_LEFT + 24, (UI_OFFSET_Y + 161), 590, 35 };
+	vecSelGameDialog.push_back(new UiArtText("Create Game", rect1, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect2 = { PANEL_LEFT + 34, (UI_OFFSET_Y + 211), 205, 33 };
+	vecSelGameDialog.push_back(new UiArtText(selgame_Label, rect2, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect3 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 256), DESCRIPTION_WIDTH, 192 };
+	vecSelGameDialog.push_back(new UiArtText(selgame_Description, rect3));
+
+	SDL_Rect rect4 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 211), 295, 35 };
+	vecSelGameDialog.push_back(new UiArtText("Select Game Speed", rect4, UIS_CENTER | UIS_BIG));
+
+	vecSelGameDlgItems.push_back(new UiListItem("Normal", 20));
+	vecSelGameDlgItems.push_back(new UiListItem("Fast", 30));
+	vecSelGameDlgItems.push_back(new UiListItem("Faster", 40));
+	vecSelGameDlgItems.push_back(new UiListItem("Fastest", 50));
+
+	vecSelGameDialog.push_back(new UiList(vecSelGameDlgItems, PANEL_LEFT + 300, (UI_OFFSET_Y + 279), 295, 26, UIS_CENTER | UIS_MED | UIS_GOLD));
+
+	SDL_Rect rect5 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelGameDialog.push_back(new UiArtTextButton("OK", &UiFocusNavigationSelect, rect5, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	SDL_Rect rect6 = { PANEL_LEFT + 449, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelGameDialog.push_back(new UiArtTextButton("CANCEL", &UiFocusNavigationEsc, rect6, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	UiInitList(vecSelGameDlgItems.size(), selgame_Speed_Focus, selgame_Speed_Select, selgame_Speed_Esc, vecSelGameDialog, true);
+}
+
+void selgame_Speed_Focus(int value)
+{
+	switch (vecSelGameDlgItems[value]->m_value) {
+	case 20:
+		strncpy(selgame_Label, "Normal", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Normal Speed\nThis is where a starting character should begin the quest to defeat Diablo.", sizeof(selgame_Description) - 1);
+		break;
+	case 30:
+		strncpy(selgame_Label, "Fast", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Fast Speed\nThe denizens of the Labyrinth have been hastened and will prove to be a greater challenge. This is recommended for experienced characters only.", sizeof(selgame_Description) - 1);
+		break;
+	case 40:
+		strncpy(selgame_Label, "Faster", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Faster Speed\nMost monsters of the dungeon will seek you out quicker than ever before. Only an experienced champion should try their luck at this speed.", sizeof(selgame_Description) - 1);
+		break;
+	case 50:
+		strncpy(selgame_Label, "Fastest", sizeof(selgame_Label) - 1);
+		strncpy(selgame_Description, "Fastest Speed\nThe minions of the underworld will rush to attack without hesitation. Only a true speed demon should enter at this pace.", sizeof(selgame_Description) - 1);
+		break;
+	}
+	WordWrapArtStr(selgame_Description, DESCRIPTION_WIDTH);
+}
+
+void selgame_Speed_Esc()
+{
+	selgame_GameSelection_Select(0);
+}
+
+void selgame_Speed_Select(int value)
+{
+	gbTickRate = vecSelGameDlgItems[value]->m_value;
+
+	if (provider == SELCONN_LOOPBACK) {
+		selgame_Password_Select(0);
+		return;
+	}
+
+	selgame_Password_Init(0);
+}
+
 void selgame_Password_Init(int value)
 {
 	memset(&selgame_Password, 0, sizeof(selgame_Password));
-	UiInitList(0, 0, NULL, selgame_Password_Select, selgame_Password_Esc, ENTERPASSWORD_DIALOG, size(ENTERPASSWORD_DIALOG));
+
+	selgame_FreeVectors();
+
+	UiAddBackground(&vecSelGameDialog);
+	UiAddLogo(&vecSelGameDialog);
+
+	SDL_Rect rect1 = { PANEL_LEFT + 24, (UI_OFFSET_Y + 161), 590, 35 };
+	vecSelGameDialog.push_back(new UiArtText("Client-Server (TCP)", rect1, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect2 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 211), 205, 192 };
+	vecSelGameDialog.push_back(new UiArtText("Description:", rect2, UIS_MED));
+
+	SDL_Rect rect3 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 256), DESCRIPTION_WIDTH, 192 };
+	vecSelGameDialog.push_back(new UiArtText(selgame_Description, rect3));
+
+	SDL_Rect rect4 = { PANEL_LEFT + 305, (UI_OFFSET_Y + 211), 285, 33 };
+	vecSelGameDialog.push_back(new UiArtText("Enter Password", rect4, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect5 = { PANEL_LEFT + 305, (UI_OFFSET_Y + 314), 285, 33 };
+	vecSelGameDialog.push_back(new UiEdit(selgame_Password, 15, rect5, UIS_MED | UIS_GOLD));
+
+	SDL_Rect rect6 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelGameDialog.push_back(new UiArtTextButton("OK", &UiFocusNavigationSelect, rect6, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	SDL_Rect rect7 = { PANEL_LEFT + 449, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelGameDialog.push_back(new UiArtTextButton("CANCEL", &UiFocusNavigationEsc, rect7, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	UiInitList(0, NULL, selgame_Password_Select, selgame_Password_Esc, vecSelGameDialog);
 }
 
 void selgame_Password_Select(int value)
 {
-	UiInitList(0, 0, NULL, NULL, NULL, NULL, 0);
-	selgame_endMenu = true;
-
 	if (selgame_selectedGame) {
-		SRegSaveString("Phone Book", "Entry1", 0, selgame_Ip);
-		if (!SNetJoinGame(selgame_selectedGame, selgame_Ip, selgame_Password, NULL, NULL, gdwPlayerId)) {
-			DrawDlg("Unable to establish a connection. A game of Devilution 0.2.0 was not detected at the specified IP address.");
+		setIniValue("Phone Book", "Entry1", selgame_Ip);
+		if (SNetJoinGame(selgame_selectedGame, selgame_Ip, selgame_Password, NULL, NULL, gdwPlayerId)) {
+			if (!IsDifficultyAllowed(m_client_info->initdata->bDiff)) {
+				selgame_GameSelection_Select(1);
+				return;
+			}
+
+			UiInitList_clear();
+			selgame_endMenu = true;
+		} else {
+			selgame_Free();
+			UiSelOkDialog("Multi Player Game", SDL_GetError(), false);
+			LoadBackgroundArt("ui_art\\selgame.pcx");
 			selgame_Password_Init(selgame_selectedGame);
 		}
 		return;
@@ -196,16 +404,25 @@ void selgame_Password_Select(int value)
 
 	_gamedata *info = m_client_info->initdata;
 	info->bDiff = gbDifficulty;
+	info->bRate = gbTickRate;
 
-	if (!SNetCreateGame(NULL, selgame_Password, NULL, 0, (char *)info, sizeof(_gamedata), MAX_PLRS, NULL, NULL, gdwPlayerId)) {
-		DrawDlg("Unable to create game.");
+	if (SNetCreateGame(NULL, selgame_Password, NULL, 0, (char *)info, sizeof(_gamedata), MAX_PLRS, NULL, NULL, gdwPlayerId)) {
+		UiInitList_clear();
+		selgame_endMenu = true;
+	} else {
+		selgame_Free();
+		UiSelOkDialog("Multi Player Game", SDL_GetError(), false);
+		LoadBackgroundArt("ui_art\\selgame.pcx");
 		selgame_Password_Init(0);
 	}
 }
 
 void selgame_Password_Esc()
 {
-	selgame_GameSelection_Select(selgame_selectedGame);
+	if (selgame_selectedGame == 1)
+		selgame_GameSelection_Select(1);
+	else
+		selgame_GameSpeedSelection();
 }
 
 int UiSelectGame(int a1, _SNETPROGRAMDATA *client_info, _SNETPLAYERDATA *user_info, _SNETUIDATA *ui_info,
@@ -218,12 +435,11 @@ int UiSelectGame(int a1, _SNETPROGRAMDATA *client_info, _SNETPLAYERDATA *user_in
 
 	selgame_endMenu = false;
 	while (!selgame_endMenu) {
-		UiRender();
+		UiClearScreen();
+		UiPollAndRender();
 	}
-	BlackPalette();
 	selgame_Free();
 
 	return selgame_enteringGame;
 }
-
-}
+} // namespace dvl

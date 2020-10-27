@@ -1,146 +1,212 @@
-//HEADER_GOES_HERE
+/**
+ * @file items.h
+ *
+ * Interface of item functionality.
+ */
 #ifndef __ITEMS_H__
 #define __ITEMS_H__
 
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int itemactive[MAXITEMS];
-extern int uitemflag;
+extern BOOL uitemflag;
 extern int itemavail[MAXITEMS];
 extern ItemStruct curruitem;
 extern ItemGetRecordStruct itemrecord[MAXITEMS];
 extern ItemStruct item[MAXITEMS + 1];
 extern BOOL itemhold[3][3];
-extern unsigned char *itemanims[35];
-extern int UniqueItemFlag[128];
+#ifdef HELLFIRE
+extern CornerStoneStruct CornerStone;
+#endif
+extern BYTE *itemanims[ITEMTYPES];
+extern BOOL UniqueItemFlag[128];
+#ifdef HELLFIRE
+extern int auricGold;
+#endif
 extern int numitems;
 extern int gnNumGetRecords;
 
-void __cdecl InitItemGFX();
-BOOL __fastcall ItemPlace(int xp, int yp);
-void __cdecl AddInitItems();
-void __cdecl InitItems();
-void __fastcall CalcPlrItemVals(int p, BOOL Loadgfx);
-void __fastcall CalcPlrScrolls(int p);
-void __fastcall CalcPlrStaff(int pnum);
-void __fastcall CalcSelfItems(int pnum);
-void __fastcall CalcPlrItemMin(int pnum);
-BOOL __fastcall ItemMinStats(PlayerStruct *p, ItemStruct *x);
-void __fastcall CalcPlrBookVals(int p);
-void __fastcall CalcPlrInv(int p, BOOL Loadgfx);
-void __fastcall SetPlrHandItem(ItemStruct *h, int idata);
-void __fastcall GetPlrHandSeed(ItemStruct *h);
-void __fastcall GetGoldSeed(int pnum, ItemStruct *h);
-void __fastcall SetPlrHandSeed(ItemStruct *h, int iseed);
-void __fastcall SetPlrHandGoldCurs(ItemStruct *h);
-void __fastcall CreatePlrItems(int p);
-BOOL __fastcall ItemSpaceOk(int i, int j);
-BOOL __fastcall GetItemSpace(int x, int y, char inum);
-void __fastcall GetSuperItemSpace(int x, int y, char inum);
-void __fastcall GetSuperItemLoc(int x, int y, int *xx, int *yy);
-void __fastcall CalcItemValue(int i);
-void __fastcall GetBookSpell(int i, int lvl);
-void __fastcall GetStaffPower(int i, int lvl, int bs, unsigned char onlygood);
-void __fastcall GetStaffSpell(int i, int lvl, unsigned char onlygood);
-void __fastcall GetItemAttrs(int i, int idata, int lvl);
-int __fastcall RndPL(int param1, int param2);
-int __fastcall PLVal(int pv, int p1, int p2, int minv, int maxv);
-void __fastcall SaveItemPower(int i, int power, int param1, int param2, int minval, int maxval, int multval);
-void __fastcall GetItemPower(int i, int minlvl, int maxlvl, int flgs, int onlygood);
-void __fastcall GetItemBonus(int i, int idata, int minlvl, int maxlvl, int onlygood);
-void __fastcall SetupItem(int i);
-int __fastcall RndItem(int m);
-int __fastcall RndUItem(int m);
-int __cdecl RndAllItems();
-int __fastcall RndTypeItems(int itype, int imid);
-int __fastcall CheckUnique(int i, int lvl, int uper, BOOLEAN recreate);
-void __fastcall GetUniqueItem(int i, int uid);
-void __fastcall SpawnUnique(int uid, int x, int y);
-void __fastcall ItemRndDur(int ii);
-void __fastcall SetupAllItems(int ii, int idx, int iseed, int lvl, int uper, int onlygood, int recreate, int pregen);
-void __fastcall SpawnItem(int m, int x, int y, BOOL sendmsg);
-void __fastcall CreateItem(int uid, int x, int y);
-void __fastcall CreateRndItem(int x, int y, unsigned char onlygood, unsigned char sendmsg, int delta);
-void __fastcall SetupAllUseful(int ii, int iseed, int lvl);
-void __fastcall CreateRndUseful(int pnum, int x, int y, unsigned char sendmsg);
-void __fastcall CreateTypeItem(int x, int y, unsigned char onlygood, int itype, int imisc, int sendmsg, int delta);
-void __fastcall RecreateItem(int ii, int idx, unsigned short ic, int iseed, int ivalue);
-void __fastcall RecreateEar(int ii, unsigned short ic, int iseed, int Id, int dur, int mdur, int ch, int mch, int ivalue, int ibuff);
-void __fastcall SpawnQuestItem(int itemid, int x, int y, int randarea, int selflag);
-void __cdecl SpawnRock();
-void __fastcall RespawnItem(int i, BOOL FlipFlag);
-void __fastcall DeleteItem(int ii, int i);
-void __cdecl ItemDoppel();
-void __cdecl ProcessItems();
-void __cdecl FreeItemGFX();
-void __fastcall GetItemFrm(int i);
-void __fastcall GetItemStr(int i);
-void __fastcall CheckIdentify(int pnum, int cii);
-void __fastcall DoRepair(int pnum, int cii);
-void __fastcall RepairItem(ItemStruct *i, int lvl);
-void __fastcall DoRecharge(int pnum, int cii);
-void __fastcall RechargeItem(ItemStruct *i, int r);
-void __fastcall PrintItemOil(char IDidx);
-void __fastcall PrintItemPower(char plidx, ItemStruct *x);
-void __cdecl DrawUTextBack();
-void __fastcall PrintUString(int x, int y, int cjustflag, char *str, int col);
-void __fastcall DrawULine(int y);
-void __cdecl DrawUniqueInfo();
-void __fastcall PrintItemMisc(ItemStruct *x);
-void __fastcall PrintItemDetails(ItemStruct *x);
-void __fastcall PrintItemDur(ItemStruct *x);
-void __fastcall UseItem(int p, int Mid, int spl);
-BOOL __fastcall StoreStatOk(ItemStruct *h);
-BOOL __fastcall SmithItemOk(int i);
-int __fastcall RndSmithItem(int lvl);
-void __fastcall BubbleSwapItem(ItemStruct *a, ItemStruct *b);
-void __cdecl SortSmith();
-void __fastcall SpawnSmith(int lvl);
-BOOL __fastcall PremiumItemOk(int i);
-int __fastcall RndPremiumItem(int minlvl, int maxlvl);
-void __fastcall SpawnOnePremium(int i, int plvl);
-void __fastcall SpawnPremium(int lvl);
-BOOL __fastcall WitchItemOk(int i);
-int __fastcall RndWitchItem(int lvl);
-void __cdecl SortWitch();
-void __fastcall WitchBookLevel(int ii);
-void __fastcall SpawnWitch(int lvl);
-int __fastcall RndBoyItem(int lvl);
-void __fastcall SpawnBoy(int lvl);
-BOOL __fastcall HealerItemOk(int i);
-int __fastcall RndHealerItem(int lvl);
-void __cdecl SortHealer();
-void __fastcall SpawnHealer(int lvl);
-void __cdecl SpawnStoreGold();
-void __fastcall RecreateSmithItem(int ii, int idx, int plvl, int iseed);
-void __fastcall RecreatePremiumItem(int ii, int idx, int lvl, int iseed);
-void __fastcall RecreateBoyItem(int ii, int idx, int lvl, int iseed);
-void __fastcall RecreateWitchItem(int ii, int idx, int lvl, int iseed);
-void __fastcall RecreateHealerItem(int ii, int idx, int lvl, int iseed);
-void __fastcall RecreateTownItem(int ii, int idx, unsigned short icreateinfo, int iseed, int ivalue);
-void __cdecl RecalcStoreStats();
-int __cdecl ItemNoFlippy();
-void __fastcall CreateSpellBook(int x, int y, int ispell, BOOLEAN sendmsg, int delta);
-void __fastcall CreateMagicArmor(int x, int y, int imisc, int icurs, int sendmsg, int delta);
-void __fastcall CreateMagicWeapon(int x, int y, int imisc, int icurs, int sendmsg, int delta);
-BOOL __fastcall GetItemRecord(int dwSeed, WORD CI, int indx);
-void __fastcall NextItemRecord(int i);
-void __fastcall SetItemRecord(int dwSeed, WORD CI, int indx);
-void __fastcall PutItemRecord(int seed, WORD ci, int index);
-
-/* rdata */
-
-extern const PLStruct PL_Prefix[84];
-extern const PLStruct PL_Suffix[97];
-extern const UItemStruct UniqueItemList[91];
+#ifdef HELLFIRE
+int items_4231CA(int i);
+int items_423230(int i);
+int items_423296(int i);
+int items_4232FC(int i);
+int items_423362(int i);
+int items_4233C8(int i);
+int items_42342E(int i);
+int items_4234B2(int i);
+int items_423518(int i);
+int items_42357E(int i);
+void items_42390F();
+int items_get_currlevel();
+#endif
+void InitItemGFX();
+BOOL ItemPlace(int xp, int yp);
+void AddInitItems();
+void InitItems();
+void CalcPlrItemVals(int p, BOOL Loadgfx);
+void CalcPlrScrolls(int p);
+void CalcPlrStaff(int p);
+void CalcSelfItems(int pnum);
+void CalcPlrItemMin(int pnum);
+BOOL ItemMinStats(PlayerStruct *p, ItemStruct *x);
+void CalcPlrBookVals(int p);
+void CalcPlrInv(int p, BOOL Loadgfx);
+void SetPlrHandItem(ItemStruct *h, int idata);
+void GetPlrHandSeed(ItemStruct *h);
+void GetGoldSeed(int pnum, ItemStruct *h);
+void SetPlrHandSeed(ItemStruct *h, int iseed);
+void SetPlrHandGoldCurs(ItemStruct *h);
+void CreatePlrItems(int p);
+BOOL ItemSpaceOk(int i, int j);
+BOOL GetItemSpace(int x, int y, char inum);
+void GetSuperItemSpace(int x, int y, char inum);
+void GetSuperItemLoc(int x, int y, int *xx, int *yy);
+void CalcItemValue(int i);
+void GetBookSpell(int i, int lvl);
+void GetStaffPower(int i, int lvl, int bs, BOOL onlygood);
+void GetStaffSpell(int i, int lvl, BOOL onlygood);
+void GetItemAttrs(int i, int idata, int lvl);
+int RndPL(int param1, int param2);
+int PLVal(int pv, int p1, int p2, int minv, int maxv);
+void SaveItemPower(int i, int power, int param1, int param2, int minval, int maxval, int multval);
+void GetItemPower(int i, int minlvl, int maxlvl, int flgs, BOOL onlygood);
+#ifdef HELLFIRE
+void GetItemBonus(int i, int idata, int minlvl, int maxlvl, BOOL onlygood, BOOLEAN allowspells);
+#else
+void GetItemBonus(int i, int idata, int minlvl, int maxlvl, BOOL onlygood);
+#endif
+void SetupItem(int i);
+int RndItem(int m);
+int RndUItem(int m);
+int RndAllItems();
+#ifdef HELLFIRE
+int RndTypeItems(int itype, int imid, int lvl);
+#else
+int RndTypeItems(int itype, int imid);
+#endif
+int CheckUnique(int i, int lvl, int uper, BOOL recreate);
+void GetUniqueItem(int i, int uid);
+void SpawnUnique(int uid, int x, int y);
+void ItemRndDur(int ii);
+void SetupAllItems(int ii, int idx, int iseed, int lvl, int uper, BOOL onlygood, BOOL recreate, BOOL pregen);
+void SpawnItem(int m, int x, int y, BOOL sendmsg);
+void CreateItem(int uid, int x, int y);
+void CreateRndItem(int x, int y, BOOL onlygood, BOOL sendmsg, BOOL delta);
+void SetupAllUseful(int ii, int iseed, int lvl);
+void CreateRndUseful(int pnum, int x, int y, BOOL sendmsg);
+void CreateTypeItem(int x, int y, BOOL onlygood, int itype, int imisc, BOOL sendmsg, BOOL delta);
+void RecreateItem(int ii, int idx, WORD icreateinfo, int iseed, int ivalue);
+void RecreateEar(int ii, WORD ic, int iseed, int Id, int dur, int mdur, int ch, int mch, int ivalue, int ibuff);
+#ifdef HELLFIRE
+void items_427A72();
+void items_427ABA(int x, int y);
+#endif
+void SpawnQuestItem(int itemid, int x, int y, int randarea, int selflag);
+void SpawnRock();
+#ifdef HELLFIRE
+void SpawnRewardItem(int itemid, int xx, int yy);
+void SpawnMapOfDoom(int xx, int yy);
+void SpawnRuneBomb(int xx, int yy);
+void SpawnTheodore(int xx, int yy);
+#endif
+void RespawnItem(int i, BOOL FlipFlag);
+void DeleteItem(int ii, int i);
+void ItemDoppel();
+void ProcessItems();
+void FreeItemGFX();
+void GetItemFrm(int i);
+void GetItemStr(int i);
+void CheckIdentify(int pnum, int cii);
+void DoRepair(int pnum, int cii);
+void RepairItem(ItemStruct *i, int lvl);
+void DoRecharge(int pnum, int cii);
+#ifdef HELLFIRE
+void DoOil(int pnum, int cii);
+BOOL OilItem(ItemStruct *x, PlayerStruct *p);
+#endif
+void RechargeItem(ItemStruct *i, int r);
+void PrintItemOil(char IDidx);
+void PrintItemPower(char plidx, ItemStruct *x);
+void DrawUTextBack();
+void PrintUString(int x, int y, BOOL cjustflag, const char *str, int col);
+void DrawULine(int y);
+void DrawUniqueInfo();
+void PrintItemMisc(ItemStruct *x);
+void PrintItemDetails(ItemStruct *x);
+void PrintItemDur(ItemStruct *x);
+void UseItem(int p, int Mid, int spl);
+BOOL StoreStatOk(ItemStruct *h);
+BOOL SmithItemOk(int i);
+int RndSmithItem(int lvl);
+void BubbleSwapItem(ItemStruct *a, ItemStruct *b);
+void SortSmith();
+void SpawnSmith(int lvl);
+BOOL PremiumItemOk(int i);
+int RndPremiumItem(int minlvl, int maxlvl);
+void SpawnOnePremium(int i, int plvl);
+#ifdef HELLFIRE
+void SpawnPremium(int pnum);
+#else
+void SpawnPremium(int lvl);
+#endif
+BOOL WitchItemOk(int i);
+int RndWitchItem(int lvl);
+void SortWitch();
+void WitchBookLevel(int ii);
+void SpawnWitch(int lvl);
+int RndBoyItem(int lvl);
+void SpawnBoy(int lvl);
+BOOL HealerItemOk(int i);
+int RndHealerItem(int lvl);
+void SortHealer();
+void SpawnHealer(int lvl);
+void SpawnStoreGold();
+void RecreateSmithItem(int ii, int idx, int lvl, int iseed);
+void RecreatePremiumItem(int ii, int idx, int plvl, int iseed);
+void RecreateBoyItem(int ii, int idx, int lvl, int iseed);
+void RecreateWitchItem(int ii, int idx, int lvl, int iseed);
+void RecreateHealerItem(int ii, int idx, int lvl, int iseed);
+void RecreateTownItem(int ii, int idx, WORD icreateinfo, int iseed, int ivalue);
+void RecalcStoreStats();
+int ItemNoFlippy();
+void CreateSpellBook(int x, int y, int ispell, BOOL sendmsg, BOOL delta);
+void CreateMagicArmor(int x, int y, int imisc, int icurs, BOOL sendmsg, BOOL delta);
+#ifdef HELLFIRE
+void CreateAmulet(int x, int y, int curlv, BOOL sendmsg, BOOL delta);
+#endif
+void CreateMagicWeapon(int x, int y, int imisc, int icurs, BOOL sendmsg, BOOL delta);
+BOOL GetItemRecord(int nSeed, WORD wCI, int nIndex);
+void NextItemRecord(int i);
+void SetItemRecord(int nSeed, WORD wCI, int nIndex);
+void PutItemRecord(int nSeed, WORD wCI, int nIndex);
 
 /* data */
 
-extern ItemDataStruct AllItemsList[157];
-extern unsigned char ItemCAnimTbl[169];
-extern char *ItemDropStrs[35];
-extern unsigned char ItemAnimLs[35];
-extern int ItemDropSnds[35];
-extern int ItemInvSnds[35];
-extern int idoppely; // weak
+#ifdef HELLFIRE
+extern int OilLevels[10];
+extern int OilValues[10];
+extern int OilMagic[10];
+extern char OilNames[10][25];
+extern int MaxGold;
+#endif
+
+extern BYTE ItemCAnimTbl[];
+extern const char *const ItemDropNames[];
+extern BYTE ItemAnimLs[];
+extern int ItemDropSnds[];
+extern int ItemInvSnds[];
+extern int idoppely;
 extern int premiumlvladd[6];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __ITEMS_H__ */

@@ -1,40 +1,60 @@
-//HEADER_GOES_HERE
+/**
+ * @file loadsave.h
+ *
+ * Interface of save game functionality.
+ */
 #ifndef __LOADSAVE_H__
 #define __LOADSAVE_H__
 
-extern unsigned char *tbuff;
+DEVILUTION_BEGIN_NAMESPACE
 
-void __fastcall LoadGame(BOOL firstflag);
-char __cdecl BLoad();
-int __cdecl WLoad();
-int __cdecl ILoad();
-BOOL __cdecl OLoad();
-void __fastcall LoadPlayer(int i);
-void __fastcall LoadMonster(int i);
-void __fastcall LoadMissile(int i);
-void __fastcall LoadObject(int i);
-void __fastcall LoadItem(int i);
-void __fastcall LoadPremium(int i);
-void __fastcall LoadQuest(int i);
-void __fastcall LoadLighting(int i);
-void __fastcall LoadVision(int i);
-void __fastcall LoadPortal(int i);
-void __cdecl SaveGame();
-void __fastcall BSave(char v);
-void __fastcall WSave(int v);
-void __fastcall ISave(int v);
-void __fastcall OSave(BOOL v);
-void __fastcall SavePlayer(int i);
-void __fastcall SaveMonster(int i);
-void __fastcall SaveMissile(int i);
-void __fastcall SaveObject(int i);
-void __fastcall SaveItem(int i);
-void __fastcall SavePremium(int i);
-void __fastcall SaveQuest(int i);
-void __fastcall SaveLighting(int i);
-void __fastcall SaveVision(int i);
-void __fastcall SavePortal(int i);
-void __cdecl SaveLevel();
-void __cdecl LoadLevel();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern BYTE *tbuff;
+
+void LoadGame(BOOL firstflag);
+char BLoad();
+int WLoad();
+int ILoad();
+BOOL OLoad();
+void LoadItems(const int n, ItemStruct *pItem);
+void LoadItemData(ItemStruct *pItem);
+void SaveItem(ItemStruct *pItem);
+void SaveItems(ItemStruct *pItem, const int n);
+
+void LoadPlayer(int i);
+void LoadMonster(int i);
+void LoadMissile(int i);
+void LoadObject(int i);
+void LoadItem(int i);
+void LoadPremium(int i);
+void LoadQuest(int i);
+void LoadLighting(int i);
+void LoadVision(int i);
+void LoadPortal(int i);
+void SaveGame();
+void BSave(char v);
+void WSave(int v);
+void ISave(int v);
+void OSave(BOOL v);
+void SavePlayer(int i);
+void SaveMonster(int i);
+void SaveMissile(int i);
+void SaveObject(int i);
+void SavePremium(int i);
+void SaveQuest(int i);
+void SaveLighting(int i);
+void SaveVision(int i);
+void SavePortal(int i);
+void SaveLevel();
+void LoadLevel();
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __LOADSAVE_H__ */

@@ -50,7 +50,11 @@
   #include <assert.h>
   #include <ctype.h>
   #include <stdio.h>
+
+  // Suppress definitions of `min` and `max` macros by <windows.h>:
+  #define NOMINMAX 1
   #include <windows.h>
+
   #include <wininet.h>
   #define PLATFORM_LITTLE_ENDIAN
 
@@ -102,10 +106,7 @@
 
 #endif
 
-//-----------------------------------------------------------------------------
-// Assumption: we are not on Windows nor Macintosh, so this must be linux *grin*
-
-#if !defined(PLATFORM_DEFINED)
+#if !defined(PLATFORM_DEFINED) && defined(__HAIKU__)
 
   #include <sys/types.h>
   #include <sys/stat.h>
@@ -121,7 +122,82 @@
   #include <assert.h>
   #include <errno.h>
 
-  #define PLATFORM_LITTLE_ENDIAN
+  #ifndef __BIG_ENDIAN__
+    #define PLATFORM_LITTLE_ENDIAN
+  #endif
+
+  #define PLATFORM_HAIKU
+  #define PLATFORM_DEFINED                  // The platform is known now
+
+#endif
+
+#if !defined(PLATFORM_DEFINED) && defined(__AMIGA__)
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#include <ctype.h>
+#include <assert.h>
+#include <errno.h>
+
+#define PLATFORM_AMIGA
+#define PLATFORM_DEFINED
+
+#endif
+
+#if !defined(PLATFORM_DEFINED) && defined(__SWITCH__)
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <stdint.h>
+  #include <stdlib.h>
+  #include <stdio.h>
+  #include <stdarg.h>
+  #include <string.h>
+  #include <strings.h>
+  #include <ctype.h>
+  #include <assert.h>
+  #include <errno.h>
+
+  #ifndef __BIG_ENDIAN__
+    #define PLATFORM_LITTLE_ENDIAN
+  #endif
+
+  #define PLATFORM_SWITCH
+  #define PLATFORM_DEFINED
+
+#endif
+//-----------------------------------------------------------------------------
+// Assumption: we are not on Windows nor Macintosh, so this must be linux *grin*
+
+#if !defined(PLATFORM_DEFINED)
+
+  #include <sys/types.h>
+  #include <sys/stat.h>
+  #include <sys/mman.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  #include <stdint.h>
+  #include <stdlib.h>
+  #include <stdio.h>
+  #include <stdarg.h>
+  #include <string.h>
+  #include <strings.h>
+  #include <ctype.h>
+  #include <assert.h>
+  #include <errno.h>
+
+  #ifndef __BIG_ENDIAN__
+    #define PLATFORM_LITTLE_ENDIAN
+  #endif
+
   #define PLATFORM_LINUX
   #define PLATFORM_DEFINED
 
@@ -139,8 +215,8 @@
 
   // Typedefs for ANSI C
   typedef unsigned char  BYTE;
-  typedef unsigned short USHORT;
   typedef int            LONG;
+  typedef unsigned short USHORT;
   typedef unsigned int   DWORD;
   typedef unsigned long  DWORD_PTR;
   typedef long           LONG_PTR;
@@ -199,7 +275,7 @@
 #endif // !PLATFORM_WINDOWS
 
 // 64-bit calls are supplied by "normal" calls on Mac
-#if defined(PLATFORM_MAC)
+#if defined(PLATFORM_MAC) || defined(PLATFORM_HAIKU) || defined(PLATFORM_AMIGA) || defined(PLATFORM_SWITCH)
   #define stat64  stat
   #define fstat64 fstat
   #define lseek64 lseek
@@ -209,7 +285,7 @@
 #endif
 
 // Platform-specific error codes for UNIX-based platforms
-#if defined(PLATFORM_MAC) || defined(PLATFORM_LINUX)
+#if defined(PLATFORM_MAC) || defined(PLATFORM_LINUX) || defined(PLATFORM_HAIKU) || defined(PLATFORM_AMIGA) || defined(PLATFORM_SWITCH)
   #define ERROR_SUCCESS                  0
   #define ERROR_FILE_NOT_FOUND           ENOENT
   #define ERROR_ACCESS_DENIED            EPERM
@@ -275,6 +351,7 @@
     #define    BSWAP_ARRAY64_UNSIGNED(a,b)      ConvertUInt64Buffer((a),(b))
     #define    BSWAP_TMPQHEADER(a,b)            ConvertTMPQHeader((a),(b))
     #define    BSWAP_TMPKHEADER(a)              ConvertTMPKHeader((a))
+
 #endif
 
 //-----------------------------------------------------------------------------
@@ -309,6 +386,5 @@
 //
 
 #define bool int
-extern "C" void TranslateFileName(char* dst, int dstLen, const char* src);
 
 #endif // __STORMPORT_H__

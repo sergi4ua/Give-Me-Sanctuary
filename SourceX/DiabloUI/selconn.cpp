@@ -1,7 +1,8 @@
 #include "selconn.h"
 
-#include "devilution.h"
+#include "all.h"
 #include "DiabloUI/diabloui.h"
+#include "DiabloUI/text.h"
 
 namespace dvl {
 
@@ -15,38 +16,79 @@ _SNETPLAYERDATA *selconn_UserInfo;
 _SNETUIDATA *selconn_UiInfo;
 _SNETVERSIONDATA *selconn_FileInfo;
 
-DWORD provider;
+int provider;
 
-UI_Item SELCONNECT_DIALOG[] = {
-	{ { 0, 0, 640, 480 }, UI_IMAGE, 0, 0, NULL, &ArtBackground },
-	{ { 24, 161, 590, 35 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Multi Player Game" },
-	{ { 35, 218, 205, 21 }, UI_TEXT, 0, 0, selconn_MaxPlayers }, // Max players
-	{ { 35, 256, 205, 21 }, UI_TEXT, 0, 0, "Requirements:" },
-	{ { 35, 275, 205, 66 }, UI_TEXT, 0, 0, selconn_Description }, //Description
-	{ { 30, 356, 220, 31 }, UI_TEXT, UIS_CENTER | UIS_MED, 0, "no gateway needed" },
-	{ { 35, 393, 205, 21 }, UI_TEXT, UIS_CENTER, 0, selconn_Gateway }, // Gateway
-	{ { 16, 427, 250, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD | UIS_HIDDEN, 0, "Change Gateway" },
-	{ { 300, 211, 295, 33 }, UI_TEXT, UIS_CENTER | UIS_BIG, 0, "Select Connection" },
-	{ { 305, 256, 285, 26 }, UI_LIST, UIS_CENTER | UIS_VCENTER | UIS_GOLD, 0, "Client-Server (TCP)" },
-	{ { 305, 282, 285, 26 }, UI_LIST, UIS_CENTER | UIS_VCENTER | UIS_GOLD, 1, "Peer-to-Peer (UDP)" },
-	{ { 305, 308, 285, 26 }, UI_LIST, UIS_CENTER | UIS_VCENTER | UIS_GOLD, 2, "Loopback" },
-	{ { 305, 334, 285, 26 }, UI_LIST, UIS_CENTER | UIS_VCENTER | UIS_GOLD },
-	{ { 305, 360, 285, 26 }, UI_LIST, UIS_CENTER | UIS_VCENTER | UIS_GOLD },
-	{ { 305, 386, 285, 26 }, UI_LIST, UIS_CENTER | UIS_VCENTER | UIS_GOLD },
-	{ { 299, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "OK", (void *)UiFocusNavigationSelect },
-	{ { 454, 427, 140, 35 }, UI_BUTTON, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD, 0, "Cancel", (void *)UiFocusNavigationEsc },
-};
+std::vector<UiListItem *> vecConnItems;
+std::vector<UiItemBase *> vecSelConnDlg;
+
+#define DESCRIPTION_WIDTH 205
 
 void selconn_Load()
 {
 	LoadBackgroundArt("ui_art\\selconn.pcx");
-	UiInitList(0, 2, selconn_Focus, selconn_Select, selconn_Esc, SELCONNECT_DIALOG, size(SELCONNECT_DIALOG));
+
+#ifndef NONET
+	vecConnItems.push_back(new UiListItem("Client-Server (TCP)", SELCONN_TCP));
+#ifdef BUGGY
+	vecConnItems.push_back(new UiListItem("Peer-to-Peer (UDP)", SELCONN_UDP));
+#endif
+#endif
+	vecConnItems.push_back(new UiListItem("Loopback", SELCONN_LOOPBACK));
+
+	UiAddBackground(&vecSelConnDlg);
+	UiAddLogo(&vecSelConnDlg);
+
+	SDL_Rect rect1 = { PANEL_LEFT + 24, (UI_OFFSET_Y + 161), 590, 35 };
+	vecSelConnDlg.push_back(new UiArtText("Multi Player Game", rect1, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect2 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 218), DESCRIPTION_WIDTH, 21 };
+	vecSelConnDlg.push_back(new UiArtText(selconn_MaxPlayers, rect2));
+
+	SDL_Rect rect3 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 256), DESCRIPTION_WIDTH, 21 };
+	vecSelConnDlg.push_back(new UiArtText("Requirements:", rect3));
+
+	SDL_Rect rect4 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 275), DESCRIPTION_WIDTH, 66 };
+	vecSelConnDlg.push_back(new UiArtText(selconn_Description, rect4));
+
+	SDL_Rect rect5 = { PANEL_LEFT + 30, (UI_OFFSET_Y + 356), 220, 31 };
+	vecSelConnDlg.push_back(new UiArtText("no gateway needed", rect5, UIS_CENTER | UIS_MED));
+
+	SDL_Rect rect6 = { PANEL_LEFT + 35, (UI_OFFSET_Y + 393), DESCRIPTION_WIDTH, 21 };
+	vecSelConnDlg.push_back(new UiArtText(selconn_Gateway, rect6, UIS_CENTER));
+
+	SDL_Rect rect7 = { PANEL_LEFT + 300, (UI_OFFSET_Y + 211), 295, 33 };
+	vecSelConnDlg.push_back(new UiArtText("Select Connection", rect7, UIS_CENTER | UIS_BIG));
+
+	SDL_Rect rect8 = { PANEL_LEFT + 16, (UI_OFFSET_Y + 427), 250, 35 };
+	vecSelConnDlg.push_back(new UiArtTextButton("Change Gateway", NULL, rect8, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD | UIS_HIDDEN));
+
+	vecSelConnDlg.push_back(new UiList(vecConnItems, PANEL_LEFT + 305, (UI_OFFSET_Y + 256), 285, 26, UIS_CENTER | UIS_VCENTER | UIS_GOLD));
+
+	SDL_Rect rect9 = { PANEL_LEFT + 299, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelConnDlg.push_back(new UiArtTextButton("OK", &UiFocusNavigationSelect, rect9, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	SDL_Rect rect10 = { PANEL_LEFT + 454, (UI_OFFSET_Y + 427), 140, 35 };
+	vecSelConnDlg.push_back(new UiArtTextButton("Cancel", &UiFocusNavigationEsc, rect10, UIS_CENTER | UIS_VCENTER | UIS_BIG | UIS_GOLD));
+
+	UiInitList(vecConnItems.size(), selconn_Focus, selconn_Select, selconn_Esc, vecSelConnDlg);
 }
 
 void selconn_Free()
 {
-	mem_free_dbg(ArtBackground.data);
-	ArtBackground.data = NULL;
+	ArtBackground.Unload();
+
+	for (std::size_t i = 0; i < vecConnItems.size(); i++) {
+		UiListItem *pUIItem = vecConnItems[i];
+		delete pUIItem;
+	}
+	vecConnItems.clear();
+
+	for (std::size_t i = 0; i < vecSelConnDlg.size(); i++) {
+		UiItemBase *pUIMenuItem = vecSelConnDlg[i];
+		if (pUIMenuItem)
+			delete pUIMenuItem;
+	}
+	vecSelConnDlg.clear();
 }
 
 void selconn_Esc()
@@ -57,43 +99,29 @@ void selconn_Esc()
 
 void selconn_Focus(int value)
 {
-	int players = 4;
-	switch (value) {
-	case 0:
-		sprintf(selconn_Description, "All computers must be connected to a TCP-compatible network.");
-		players = 4;
+	int players = MAX_PLRS;
+	switch (vecConnItems[value]->m_value) {
+	case SELCONN_TCP:
+		strncpy(selconn_Description, "All computers must be connected to a TCP-compatible network.", sizeof(selconn_Description) - 1);
+		players = MAX_PLRS;
 		break;
-	case 1:
-		sprintf(selconn_Description, "All computers must be connected to a UDP-compatible network.");
-		players = 4;
+	case SELCONN_UDP:
+		strncpy(selconn_Description, "All computers must be connected to a UDP-compatible network.", sizeof(selconn_Description) - 1);
+		players = MAX_PLRS;
 		break;
-	case 2:
-		sprintf(selconn_Description, "Play by yourself with no network exposure.");
+	case SELCONN_LOOPBACK:
+		strncpy(selconn_Description, "Play by yourself with no network exposure.", sizeof(selconn_Description) - 1);
 		players = 1;
 		break;
 	}
 
-	sprintf(selconn_MaxPlayers, "Players Supported: %d", players);
-
-	for (auto &item : SELCONNECT_DIALOG) {
-		if (item.caption != NULL && !(item.flags & (UIS_VCENTER | UIS_CENTER)))
-			WordWrap(&item);
-	}
+	snprintf(selconn_MaxPlayers, sizeof(selconn_MaxPlayers), "Players Supported: %d", players);
+	WordWrapArtStr(selconn_Description, DESCRIPTION_WIDTH);
 }
 
 void selconn_Select(int value)
 {
-	switch (value) {
-	case 0:
-		provider = 'TCPN';
-		break;
-	case 1:
-		provider = 'UDPN';
-		break;
-	case 2:
-		provider = 'SCBL';
-		break;
-	}
+	provider = vecConnItems[value]->m_value;
 
 	selconn_Free();
 	selconn_EndMenu = SNetInitializeProvider(provider, selconn_ClientInfo, selconn_UserInfo, selconn_UiInfo, selconn_FileInfo);
@@ -117,12 +145,12 @@ int UiSelectProvider(
 	selconn_ReturnValue = true;
 	selconn_EndMenu = false;
 	while (!selconn_EndMenu) {
-		UiRender();
+		UiClearScreen();
+		UiPollAndRender();
 	}
-	BlackPalette();
 	selconn_Free();
 
 	return selconn_ReturnValue;
 }
 
-}
+} // namespace dvl

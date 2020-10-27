@@ -1,28 +1,45 @@
-#include "devilution.h"
+#include "all.h"
+#include "controls/menu_controls.h"
 #include "DiabloUI/diabloui.h"
 
 namespace dvl {
 
+std::vector<UiItemBase *> vecTitleScreen;
+
 void title_Load()
 {
+#ifdef HELLFIRE
+	LoadBackgroundArt("ui_art\\hf_logo1.pcx", 16);
+#else
 	LoadBackgroundArt("ui_art\\title.pcx");
-	LoadMaskedArtFont("ui_art\\logo.pcx", &ArtLogos[LOGO_BIG], 15);
+	LoadMaskedArt("ui_art\\logo.pcx", &ArtLogos[LOGO_BIG], 15);
+#endif
 }
 
 void title_Free()
 {
-	mem_free_dbg(ArtBackground.data);
-	ArtBackground.data = NULL;
-	mem_free_dbg(ArtLogos[LOGO_BIG].data);
-	ArtLogos[LOGO_BIG].data = NULL;
+	ArtBackground.Unload();
+	ArtLogos[LOGO_BIG].Unload();
+
+	for (std::size_t i = 0; i < vecTitleScreen.size(); i++) {
+		UiItemBase *pUIItem = vecTitleScreen[i];
+		delete pUIItem;
+	}
+	vecTitleScreen.clear();
 }
 
-BOOL UiTitleDialog(int a1)
+void UiTitleDialog()
 {
-	UI_Item TITLESCREEN_DIALOG[] = {
-		{ { 0, 0, 640, 480 }, UI_IMAGE, 0, 0, NULL, &ArtBackground },
-		{ { 49, 410, 550, 26 }, UI_TEXT, UIS_MED | UIS_CENTER, 0, "Copyright \xA9 1996-2001 Blizzard Entertainment" },
-	};
+#ifdef HELLFIRE
+	SDL_Rect rect = { 0, UI_OFFSET_Y, 0, 0 };
+	vecTitleScreen.push_back(new UiImage(&ArtBackground, /*animated=*/true, /*frame=*/0, rect, UIS_CENTER));
+#else
+	UiAddBackground(&vecTitleScreen);
+	UiAddLogo(&vecTitleScreen, LOGO_BIG, 182);
+
+	SDL_Rect rect = { PANEL_LEFT + 49, (UI_OFFSET_Y + 410), 550, 26 };
+	vecTitleScreen.push_back(new UiArtText("Copyright \xA9 1996-2001 Blizzard Entertainment", rect, UIS_MED | UIS_CENTER));
+#endif
 
 	title_Load();
 
@@ -31,32 +48,30 @@ BOOL UiTitleDialog(int a1)
 
 	SDL_Event event;
 	while (!endMenu && SDL_GetTicks() < timeOut) {
-		UiRenderItems(TITLESCREEN_DIALOG, size(TITLESCREEN_DIALOG));
-		DrawLogo(182, LOGO_BIG);
+		UiRenderItems(vecTitleScreen);
 		UiFadeIn();
 
 		while (SDL_PollEvent(&event)) {
+			if (GetMenuAction(event) != MenuAction_NONE) {
+				endMenu = true;
+				break;
+			}
 			switch (event.type) {
-			case SDL_KEYDOWN: /* To match the original uncomment this
-				if (event.key.keysym.sym == SDLK_UP
-				    || event.key.keysym.sym == SDLK_UP
-				    || event.key.keysym.sym == SDLK_LEFT
-				    || event.key.keysym.sym == SDLK_RIGHT) {
-					break;
-				}*/
+			case SDL_KEYDOWN:
 			case SDL_MOUSEBUTTONDOWN:
 				endMenu = true;
 				break;
-			case SDL_QUIT:
-				exit(0);
 			}
+			UiHandleEvents(&event);
 		}
 	}
-	BlackPalette();
 
 	title_Free();
-
-	return true;
 }
 
+void UiSetSpawned(BOOL bSpawned)
+{
+	gbSpawned = bSpawned;
 }
+
+} // namespace dvl

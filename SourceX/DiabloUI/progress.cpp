@@ -1,27 +1,47 @@
-#include "devilution.h"
+#include "all.h"
+#include "display.h"
+
+#include "DiabloUI/button.h"
 #include "DiabloUI/diabloui.h"
-#include "dx.h"
+#include "DiabloUI/art_draw.h"
+#include "DiabloUI/fonts.h"
 
 namespace dvl {
 
+Art dialogArt;
+char dialogText[256];
+Art progressArt;
 Art ArtPopupSm;
 Art ArtProgBG;
 Art ProgFil;
-Art ButImage;
 SDL_Surface *msgSurface;
 SDL_Surface *cancleSurface;
 int textWidth;
+bool endMenu;
 
-void progress_Load(char *msg)
+void DialogActionCancel()
+{
+	endMenu = true;
+}
+
+//// TODO use PROGRESS_DIALOG for rendering the progressbar or delete it
+//UiItem PROGRESS_DIALOG[] = {
+//	UiImage(&dialogArt, { PANEL_LEFT + 180, 168, 280, 144 }),
+//	UiText(dialogText, { PANEL_LEFT + 180, 177, 280, 43 }, UIS_CENTER),
+//	UiImage(&progressArt, { PANEL_LEFT + 205, 220, 228, 38 }),
+//};
+
+void progress_Load(const char *msg)
 {
 	LoadBackgroundArt("ui_art\\black.pcx");
 	LoadArt("ui_art\\spopup.pcx", &ArtPopupSm);
 	LoadArt("ui_art\\prog_bg.pcx", &ArtProgBG);
 	LoadArt("ui_art\\prog_fil.pcx", &ProgFil);
-	LoadArt("ui_art\\but_sml.pcx", &ButImage, 15);
+	LoadSmlButtonArt();
+	LoadTtfFont();
 
 	if (font != NULL) {
-		SDL_Color color = { 243, 243, 243 };
+		SDL_Color color = { 243, 243, 243, 0 };
 
 		msgSurface = TTF_RenderUTF8_Solid(font, msg, color);
 		cancleSurface = TTF_RenderUTF8_Solid(font, "Cancel", color);
@@ -31,24 +51,21 @@ void progress_Load(char *msg)
 
 void progress_Free()
 {
-	mem_free_dbg(ArtBackground.data);
-	ArtBackground.data = NULL;
-	mem_free_dbg(ArtPopupSm.data);
-	ArtPopupSm.data = NULL;
-	mem_free_dbg(ArtProgBG.data);
-	ArtProgBG.data = NULL;
-	mem_free_dbg(ProgFil.data);
-	ProgFil.data = NULL;
-	mem_free_dbg(ButImage.data);
-	ButImage.data = NULL;
+	ArtBackground.Unload();
+	ArtPopupSm.Unload();
+	ArtProgBG.Unload();
+	ProgFil.Unload();
+	UnloadSmlButtonArt();
 	SDL_FreeSurface(msgSurface);
 	msgSurface = NULL;
 	SDL_FreeSurface(cancleSurface);
 	cancleSurface = NULL;
+	UnloadTtfFont();
 }
 
 void progress_Render(BYTE progress)
 {
+	SDL_FillRect(GetOutputSurface(), NULL, 0x000000);
 	DrawArt(0, 0, &ArtBackground);
 
 	int x = GetCenterOffset(280);
@@ -59,22 +76,28 @@ void progress_Render(BYTE progress)
 	if (progress) {
 		DrawArt(GetCenterOffset(227), y + 52, &ProgFil, 0, 227 * progress / 100);
 	}
-	DrawArt(GetCenterOffset(110), y + 99, &ButImage, 2, 110);
+	DrawArt(GetCenterOffset(110), y + 99, &SmlButton, 2, 110);
 
 	if (msgSurface) {
-		SDL_Rect dsc_rect = { 64 + x + 50, 160 + y + 8, SCREEN_WIDTH, SCREEN_HEIGHT };
-		SDL_BlitSurface(msgSurface, NULL, pal_surface, &dsc_rect);
-		dsc_rect.x = 64 + GetCenterOffset(textWidth) - 1;
-		dsc_rect.y = 160 + y + 99 + 4;
-		SDL_BlitSurface(cancleSurface, NULL, pal_surface, &dsc_rect);
+		SDL_Rect dsc_rect = {
+			static_cast<Sint16>(x + 50),
+			static_cast<Sint16>(y + 8),
+			msgSurface->w,
+			msgSurface->h
+		};
+		Blit(msgSurface, NULL, &dsc_rect);
+		dsc_rect.x = GetCenterOffset(textWidth) - 1;
+		dsc_rect.y = y + 99 + 4;
+		Blit(cancleSurface, NULL, &dsc_rect);
 	}
 }
 
-int UiProgressDialog(HWND window, char *msg, int enable, int(*fnfunc)(), int rate)
+BOOL UiProgressDialog(const char *msg, int enable, int (*fnfunc)(), int rate)
 {
 	progress_Load(msg);
+	SetFadeLevel(256);
 
-	bool endMenu = false;
+	endMenu = false;
 	int progress = 0;
 
 	SDL_Event event;
@@ -82,7 +105,7 @@ int UiProgressDialog(HWND window, char *msg, int enable, int(*fnfunc)(), int rat
 		progress = fnfunc();
 		progress_Render(progress);
 		DrawMouse();
-		SetFadeLevel(256);
+		RenderPresent();
 
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
@@ -101,15 +124,13 @@ int UiProgressDialog(HWND window, char *msg, int enable, int(*fnfunc)(), int rat
 			case SDL_MOUSEBUTTONDOWN:
 				endMenu = true;
 				break;
-			case SDL_QUIT:
-				exit(0);
 			}
+			UiHandleEvents(&event);
 		}
 	}
-	BlackPalette();
 	progress_Free();
 
 	return progress == 100;
 }
 
-}
+} // namespace dvl

@@ -1,78 +1,113 @@
-//HEADER_GOES_HERE
+/**
+ * @file engine.h
+ *
+ *  of basic engine helper functions:
+ * - Sprite blitting
+ * - Drawing
+ * - Angle calculation
+ * - RNG
+ * - Memory allocation
+ * - File loading
+ * - Video playback
+ */
 #ifndef __ENGINE_H__
 #define __ENGINE_H__
+
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //offset 0
 //pCelBuff->pFrameTable[0]
 
-extern char gbPixelCol;  // automap pixel color 8-bit (palette entry)
-extern int dword_52B970; // bool flip - if y < x
-extern int orgseed;      // weak
-extern int SeedCount;    // weak
-extern int dword_52B99C; // bool valid - if x/y are in bounds
+/** automap pixel color 8-bit (palette entry) */
+extern char gbPixelCol;
+/** flip - if y < x */
+extern BOOL gbRotateMap;
+/** Seed value before the most recent call to SetRndSeed() */
+extern int orgseed;
+/** Track number of calls to GetRndSeed() since last call to SetRndSeed() */
+extern int SeedCount;
+/** valid - if x/y are in bounds */
+extern BOOL gbNotInView;
 
-void __fastcall CelDrawDatOnly(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall CelDecodeOnly(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
-void __fastcall CelDecDatOnly(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth);
-void __fastcall CelDrawHdrOnly(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall CelDecodeHdrOnly(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall CelDecDatLightOnly(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall CelDecDatLightTrans(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void ColorPixel(int x, int y, int color);
-void __fastcall CelDecodeLightOnly(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
-void __fastcall CelDecodeHdrLightOnly(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall CelDecodeHdrLightTrans(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall CelDrawHdrLightRed(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir, char light);
-void __fastcall Cel2DecDatOnly(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall Cel2DrawHdrOnly(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cel2DecodeHdrOnly(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cel2DecDatLightOnly(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall Cel2DecDatLightTrans(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall Cel2DecodeHdrLight(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cel2DecodeLightTrans(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cel2DrawHdrLightRed(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir, char light);
-void __fastcall CelDecodeRect(BYTE *pBuff, int always_0, int hgt, int wdt, BYTE *pCelBuff, int nCel, int nWidth);
-void __fastcall CelDecodeClr(char col, int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall CelDrawHdrClrHL(char col, int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall ENG_set_pixel(int sx, int sy, BYTE col);
-void __fastcall engine_draw_pixel(int sx, int sy);
-void __fastcall DrawLine(int x0, int y0, int x1, int y1, UCHAR col);
-int __fastcall GetDirection(int x1, int y1, int x2, int y2);
-void __fastcall SetRndSeed(int s);
-int __cdecl GetRndSeed();
-int __fastcall random(BYTE idx, int v);
-void __cdecl mem_init_mutex();
-void __cdecl mem_atexit_mutex();
-void __cdecl mem_free_mutex(void);
-unsigned char *__fastcall DiabloAllocPtr(int dwBytes);
-void __fastcall mem_free_dbg(void *p);
-BYTE *__fastcall LoadFileInMem(char *pszName, int *pdwFileLen);
-void __fastcall LoadFileWithMem(char *pszName, void *buf);
+inline BYTE *CelGetFrameStart(BYTE *pCelBuff, int nCel)
+{
+	DWORD *pFrameTable;
 
-int GetTextWidth(char* s);
-void DrawTransparentBackground(int xPos, int yPos, int width, int height, int borderX, int borderY, char backgroundColor, char borderColor);
+	pFrameTable = (DWORD *)pCelBuff;
 
-void __fastcall Cl2ApplyTrans(BYTE *p, BYTE *ttbl, int nCel);
-void __fastcall Cl2DecodeFrm1(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cl2DecDatFrm1(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall Cl2DecodeFrm2(char col, int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cl2DecDatFrm2(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, char col);
-void __fastcall Cl2DecodeFrm3(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir, char light);
-void __fastcall Cl2DecDatLightTbl1(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, BYTE *pTable);
-void __fastcall Cl2DecodeLightTbl(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cl2DecodeFrm4(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cl2DecDatFrm4(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
-void __fastcall Cl2DecodeClrHL(char col, int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall Cl2DecDatClrHL(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, char col);
-void __fastcall Cl2DecodeFrm5(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir, char light);
-void __fastcall Cl2DecDatLightTbl2(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, BYTE *pTable);
-void __fastcall Cl2DecodeFrm6(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, int always_0, int dir);
-void __fastcall PlayInGameMovie(char *pszMovie);
+	return pCelBuff + SwapLE32(pFrameTable[nCel]);
+}
+
+#define LOAD_LE32(b) (((DWORD)(b)[3] << 24) | ((DWORD)(b)[2] << 16) | ((DWORD)(b)[1] << 8) | (DWORD)(b)[0])
+inline BYTE *CelGetFrame(BYTE *pCelBuff, int nCel, int *nDataSize)
+{
+	DWORD nCellStart;
+
+	nCellStart = LOAD_LE32(&pCelBuff[nCel * 4]);
+	*nDataSize = LOAD_LE32(&pCelBuff[(nCel + 1) * 4]) - nCellStart;
+	return pCelBuff + nCellStart;
+}
+
+inline BYTE *CelGetFrameClipped(BYTE *pCelBuff, int nCel, int *nDataSize)
+{
+	DWORD nDataStart;
+	BYTE *pRLEBytes = CelGetFrame(pCelBuff, nCel, nDataSize);
+
+	nDataStart = pRLEBytes[1] << 8 | pRLEBytes[0];
+	*nDataSize -= nDataStart;
+
+	return pRLEBytes + nDataStart;
+}
+
+void CelDraw(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void CelBlitFrame(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth);
+void CelClippedDraw(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void CelDrawLight(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, BYTE *tbl);
+void CelClippedDrawLight(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void CelClippedBlitLightTrans(BYTE *pBuff, BYTE *pCelBuff, int nCel, int nWidth);
+void CelDrawLightRed(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, char light);
+void CelBlitSafe(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
+void CelClippedDrawSafe(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void CelBlitLightSafe(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, BYTE *tbl);
+void CelBlitLightTransSafe(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
+void CelDrawLightRedSafe(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, char light);
+void CelBlitWidth(BYTE *pBuff, int x, int y, int wdt, BYTE *pCelBuff, int nCel, int nWidth);
+void CelBlitOutline(char col, int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void ENG_set_pixel(int sx, int sy, BYTE col);
+void engine_draw_pixel(int sx, int sy);
+void DrawLine(int x0, int y0, int x1, int y1, BYTE col);
+int GetDirection(int x1, int y1, int x2, int y2);
+void SetRndSeed(int s);
+int GetRndSeed();
+int random_(BYTE idx, int v);
+void engine_debug_trap(BOOL show_cursor);
+BYTE *DiabloAllocPtr(DWORD dwBytes);
+void mem_free_dbg(void *p);
+BYTE *LoadFileInMem(const char *pszName, DWORD *pdwFileLen);
+DWORD LoadFileWithMem(const char *pszName, BYTE *p);
+void Cl2ApplyTrans(BYTE *p, BYTE *ttbl, int nCel);
+void Cl2Draw(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void Cl2DrawOutline(char col, int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void Cl2DrawLightTbl(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth, char light);
+void Cl2DrawLight(int sx, int sy, BYTE *pCelBuff, int nCel, int nWidth);
+void Cl2BlitSafe(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth);
+void Cl2BlitOutlineSafe(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, char col);
+void Cl2BlitLightSafe(BYTE *pDecodeTo, BYTE *pRLEBytes, int nDataSize, int nWidth, BYTE *pTable);
+void PlayInGameMovie(const char *pszMovie);
 
 /* rdata */
 
-extern const int engine_inf;      // weak
-extern const int rand_increment;  // unused
-extern const int rand_multiplier; // unused
+extern const int RndInc;
+extern const int RndMult;
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __ENGINE_H__ */

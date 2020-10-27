@@ -1,38 +1,57 @@
-//HEADER_GOES_HERE
+/**
+ * @file palette.h
+ *
+ * Interface of functions for handling the engines color palette.
+ */
 #ifndef __PALETTE_H__
 #define __PALETTE_H__
 
-extern PALETTEENTRY logical_palette[256];
-extern PALETTEENTRY system_palette[256];
-extern PALETTEENTRY orig_palette[256];
-extern UINT gdwPalEntries;
+DEVILUTION_BEGIN_NAMESPACE
 
-void __cdecl SaveGamma();
-void __cdecl palette_init();
-void __cdecl LoadGamma();
-void __cdecl LoadSysPal();
-void __fastcall LoadPalette(char *pszFileName);
-void __fastcall LoadRndLvlPal(int l);
-void __cdecl ResetPal();
-void __cdecl IncreaseGamma();
-void __cdecl palette_update();
-void __fastcall ApplyGamma(PALETTEENTRY *dst, PALETTEENTRY *src, int n);
-void __cdecl DecreaseGamma();
-int __fastcall UpdateGamma(int gamma);
-void __cdecl BlackPalette();
-void __fastcall SetFadeLevel(int fadeval);
-void __fastcall PaletteFadeIn(int fr);
-void __fastcall PaletteFadeOut(int fr);
-void __cdecl palette_update_caves();
-void __fastcall palette_update_quest_palette(int n);
-BOOLEAN __cdecl palette_get_colour_cycling();
-void __fastcall palette_set_color_cycling(BOOLEAN enabled);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern SDL_Color logical_palette[256];
+extern SDL_Color system_palette[256];
+extern SDL_Color orig_palette[256];
+
+void palette_update();
+void SaveGamma();
+void palette_init();
+void LoadPalette(const char *pszFileName);
+void LoadRndLvlPal(int l);
+void ResetPal();
+void IncreaseGamma();
+void ApplyGamma(SDL_Color *dst, const SDL_Color *src, int n);
+void DecreaseGamma();
+int UpdateGamma(int gamma);
+void BlackPalette();
+void SetFadeLevel(DWORD fadeval);
+void PaletteFadeIn(int fr);
+void PaletteFadeOut(int fr);
+void palette_update_caves();
+#ifdef HELLFIRE
+void palette_update_crypt();
+void palette_update_hive();
+#endif
+void palette_update_quest_palette(int n);
+BOOL palette_get_color_cycling();
+BOOL palette_set_color_cycling(BOOL enabled);
 
 /* rdata */
 
 /* data */
 
-extern int gamma_correction; // idb
+extern int gamma_correction;
+#ifndef HELLFIRE
 extern BOOL color_cycling_enabled;
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __PALETTE_H__ */

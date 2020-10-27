@@ -1,55 +1,14 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file spells.cpp
+ *
+ * Implementation of functionality for casting player spells.
+ */
+#include "all.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
-SpellData spelldata[MAX_SPELLS] = {
-	// clang-format off
-	// sName,    sManaCost, sType,           sNameText,         sSkillText, sBookLvl, sStaffLvl, sTargeted, sTownSpell, sMinInt, sSFX,     sMissiles[3],                      sManaAdj, sMinMana, sStaffMin, sStaffMax, sBookCost, sStaffCost
-	{ 0,                 0, 0,               NULL,              NULL,              0,         0, FALSE,     FALSE,            0, 0,        { 0,               0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_FIREBOLT,      6, STYPE_FIRE,      "Firebolt",        "Firebolt",        1,         1, TRUE,      FALSE,           15, IS_CAST2, { MIS_FIREBOLT,    0,          0 },       1,        3,        40,        80,      1000,         50 },
-	{ SPL_HEAL,          5, STYPE_MAGIC,     "Healing",         NULL,              1,         1, FALSE,     TRUE,            17, IS_CAST8, { MIS_HEAL,        0,          0 },       3,        1,        20,        40,      1000,         50 },
-	{ SPL_LIGHTNING,    10, STYPE_LIGHTNING, "Lightning",       NULL,              4,         3, TRUE,      FALSE,           20, IS_CAST4, { MIS_LIGHTCTRL,   0,          0 },       1,        6,        20,        60,      3000,        150 },
-	{ SPL_FLASH,        30, STYPE_LIGHTNING, "Flash",           NULL,              5,         4, FALSE,     FALSE,           33, IS_CAST4, { MIS_FLASH,       MIS_FLASH2, 0 },       2,       16,        20,        40,      7500,        500 },
-	{ SPL_IDENTIFY,     13, STYPE_MAGIC,     "Identify",        "Identify",       -1,        -1, FALSE,     TRUE,            23, IS_CAST6, { MIS_IDENTIFY,    0,          0 },       2,        1,         8,        12,         0,        100 },
-	{ SPL_FIREWALL,     28, STYPE_FIRE,      "Fire Wall",       NULL,              3,         2, TRUE,      FALSE,           27, IS_CAST2, { MIS_FIREWALLC,   0,          0 },       2,       16,         8,        16,      6000,        400 },
-	{ SPL_TOWN,         35, STYPE_MAGIC,     "Town Portal",     NULL,              3,         3, TRUE,      FALSE,           20, IS_CAST6, { MIS_TOWN,        0,          0 },       3,       18,         8,        12,      3000,        200 },
-	{ SPL_STONE,        60, STYPE_MAGIC,     "Stone Curse",     NULL,              6,         5, TRUE,      FALSE,           51, IS_CAST2, { MIS_STONE,       0,          0 },       3,       40,         8,        16,     12000,        800 },
-	{ SPL_INFRA,        40, STYPE_MAGIC,     "Infravision",     NULL,             -1,        -1, FALSE,     FALSE,           36, IS_CAST8, { MIS_INFRA,       0,          0 },       5,       20,         0,         0,         0,        600 },
-	{ SPL_RNDTELEPORT,  12, STYPE_MAGIC,     "Phasing",         NULL,              7,         6, FALSE,     FALSE,           39, IS_CAST2, { MIS_RNDTELEPORT, 0,          0 },       2,        4,        40,        80,      3500,        200 },
-	{ SPL_MANASHIELD,   33, STYPE_MAGIC,     "Mana Shield",     NULL,              6,         5, FALSE,     FALSE,           25, IS_CAST2, { MIS_MANASHIELD,  0,          0 },       0,       33,         4,        10,     16000,       1200 },
-	{ SPL_FIREBALL,     16, STYPE_FIRE,      "Fireball",        NULL,              8,         7, TRUE,      FALSE,           48, IS_CAST2, { MIS_FIREBALL,    0,          0 },       1,       10,        40,        80,      8000,        300 },
-	{ SPL_GUARDIAN,     50, STYPE_FIRE,      "Guardian",        NULL,              9,         8, TRUE,      FALSE,           61, IS_CAST2, { MIS_GUARDIAN,    0,          0 },       2,       30,        16,        32,     14000,        950 },
-	{ SPL_CHAIN,        30, STYPE_LIGHTNING, "Chain Lightning", NULL,              8,         7, FALSE,     FALSE,           54, IS_CAST2, { MIS_CHAIN,       0,          0 },       1,       18,        20,        60,     11000,        750 },
-	{ SPL_WAVE,         35, STYPE_FIRE,      "Flame Wave",      NULL,              9,         8, TRUE,      FALSE,           54, IS_CAST2, { MIS_WAVE,        0,          0 },       3,       20,        20,        40,     10000,        650 },
-	{ SPL_DOOMSERP,      0, STYPE_LIGHTNING, "Doom Serpents",   NULL,             -1,        -1, FALSE,     FALSE,            0, IS_CAST2, { 0,               0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_BLODRIT,       0, STYPE_MAGIC,     "Blood Ritual",    NULL,             -1,        -1, FALSE,     FALSE,            0, IS_CAST2, { 0,               0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_NOVA,         60, STYPE_MAGIC,     "Nova",            NULL,             -1,        10, FALSE,     FALSE,           87, IS_CAST4, { MIS_NOVA,        0,          0 },       3,       35,        16,        32,     21000,       1300 },
-	{ SPL_INVISIBIL,     0, STYPE_MAGIC,     "Invisibility",    NULL,             -1,        -1, FALSE,     FALSE,            0, IS_CAST2, { 0,               0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_FLAME,        11, STYPE_FIRE,      "Inferno",         NULL,              3,         2, TRUE,      FALSE,           20, IS_CAST2, { MIS_FLAMEC,      0,          0 },       1,        6,        20,        40,      2000,        100 },
-	{ SPL_GOLEM,       100, STYPE_FIRE,      "Golem",           NULL,             11,         9, FALSE,     FALSE,           81, IS_CAST2, { MIS_GOLEM,       0,          0 },       6,       60,        16,        32,     18000,       1100 },
-	{ SPL_BLODBOIL,      0, STYPE_LIGHTNING, "Blood Boil",      NULL,             -1,        -1, TRUE,      FALSE,            0, IS_CAST8, { 0,               0,          0 },       0,        0,         0,         0,         0,          0 },
-	{ SPL_TELEPORT,     35, STYPE_MAGIC,     "Teleport",        NULL,             14,        12, TRUE,      FALSE,          105, IS_CAST6, { MIS_TELEPORT,    0,          0 },       3,       15,        16,        32,     20000,       1250 },
-	{ SPL_APOCA,       150, STYPE_FIRE,      "Apocalypse",      NULL,             -1,        15, FALSE,     FALSE,          149, IS_CAST2, { MIS_APOCA,       0,          0 },       6,       90,         8,        12,     30000,       2000 },
-	{ SPL_ETHEREALIZE, 100, STYPE_MAGIC,     "Etherealize",     NULL,             -1,        -1, FALSE,     FALSE,           93, IS_CAST2, { MIS_ETHEREALIZE, 0,          0 },       0,      100,         2,         6,     26000,       1600 },
-	{ SPL_REPAIR,        0, STYPE_MAGIC,     "Item Repair",     "Item Repair",    -1,        -1, FALSE,     TRUE,            -1, IS_CAST6, { MIS_REPAIR,      0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_RECHARGE,      0, STYPE_MAGIC,     "Staff Recharge",  "Staff Recharge", -1,        -1, FALSE,     TRUE,            -1, IS_CAST6, { MIS_RECHARGE,    0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_DISARM,        0, STYPE_MAGIC,     "Trap Disarm",     "Trap Disarm",    -1,        -1, FALSE,     FALSE,           -1, IS_CAST6, { MIS_DISARM,      0,          0 },       0,        0,        40,        80,         0,          0 },
-	{ SPL_ELEMENT,      35, STYPE_FIRE,      "Elemental",       NULL,              8,         6, FALSE,     FALSE,           68, IS_CAST2, { MIS_ELEMENT,     0,          0 },       2,       20,        20,        60,     10500,        700 },
-	{ SPL_CBOLT,         6, STYPE_LIGHTNING, "Charged Bolt",    NULL,              1,         1, TRUE,      FALSE,           25, IS_CAST2, { MIS_CBOLT,       0,          0 },       1,        6,        40,        80,      1000,         50 },
-	{ SPL_HBOLT,         7, STYPE_MAGIC,     "Holy Bolt",       NULL,              1,         1, TRUE,      FALSE,           20, IS_CAST2, { MIS_HBOLT,       0,          0 },       1,        3,        40,        80,      1000,         50 },
-	{ SPL_RESURRECT,    20, STYPE_MAGIC,     "Resurrect",       NULL,             -1,         5, FALSE,     TRUE,            30, IS_CAST8, { MIS_RESURRECT,   0,          0 },       0,       20,         4,        10,      4000,        250 },
-	{ SPL_TELEKINESIS,  15, STYPE_MAGIC,     "Telekinesis",     NULL,              2,         2, FALSE,     FALSE,           33, IS_CAST2, { MIS_TELEKINESIS, 0,          0 },       2,        8,        20,        40,      2500,        200 },
-	{ SPL_HEALOTHER,     5, STYPE_MAGIC,     "Heal Other",      NULL,              1,         1, FALSE,     TRUE,            17, IS_CAST8, { MIS_HEALOTHER,   0,          0 },       3,        1,        20,        40,      1000,         50 },
-	{ SPL_FLARE,        25, STYPE_MAGIC,     "Blood Star",      NULL,             14,        13, FALSE,     FALSE,           70, IS_CAST2, { MIS_FLARE,       0,          0 },       2,       14,        20,        60,     27500,       1800 },
-	{ SPL_BONESPIRIT,   24, STYPE_MAGIC,     "Bone Spirit",     NULL,              9,         7, FALSE,     FALSE,           34, IS_CAST2, { MIS_BONESPIRIT,  0,          0 },       1,       12,        20,        60,     11500,        800 }
-	// clang-format on
-};
-
-int __fastcall GetManaAmount(int id, int sn)
+int GetManaAmount(int id, int sn)
 {
-	int i;  // "raw" mana cost
 	int ma; // mana amount
 
 	// mana adjust
@@ -72,25 +31,29 @@ int __fastcall GetManaAmount(int id, int sn)
 		adj = sl * (spelldata[SPL_RESURRECT].sManaCost / 8);
 	}
 
-	if (spelldata[sn].sManaCost == 255) // TODO: check sign
-	{
-		i = (BYTE)plr[id]._pMaxManaBase;
+	if (sn == SPL_HEAL || sn == SPL_HEALOTHER) {
+		ma = (spelldata[SPL_HEAL].sManaCost + 2 * plr[id]._pLevel - adj);
+	} else if (spelldata[sn].sManaCost == 255) {
+		ma = ((BYTE)plr[id]._pMaxManaBase - adj);
 	} else {
-		i = spelldata[sn].sManaCost;
+		ma = (spelldata[sn].sManaCost - adj);
 	}
 
-	ma = (i - adj) << 6;
+	if (ma < 0)
+		ma = 0;
+	ma <<= 6;
 
-	if (sn == SPL_HEAL) {
-		ma = (spelldata[SPL_HEAL].sManaCost + 2 * plr[id]._pLevel - adj) << 6;
+#ifdef HELLFIRE
+	if (plr[id]._pClass == PC_SORCERER) {
+		ma >>= 1;
+	} else if (plr[id]._pClass == PC_ROGUE || plr[id]._pClass == PC_MONK || plr[id]._pClass == PC_BARD) {
+		ma -= ma >> 2;
 	}
-	if (sn == SPL_HEALOTHER) {
-		ma = (spelldata[SPL_HEAL].sManaCost + 2 * plr[id]._pLevel - adj) << 6;
-	}
-
+#else
 	if (plr[id]._pClass == PC_ROGUE) {
 		ma -= ma >> 2;
 	}
+#endif
 
 	if (spelldata[sn].sMinMana > ma >> 6) {
 		ma = spelldata[sn].sMinMana << 6;
@@ -99,12 +62,21 @@ int __fastcall GetManaAmount(int id, int sn)
 	return ma * (100 - plr[id]._pISplCost) / 100;
 }
 
-void __fastcall UseMana(int id, int sn)
+void UseMana(int id, int sn)
 {
 	int ma; // mana cost
 
 	if (id == myplr) {
 		switch (plr[id]._pSplType) {
+		case RSPLTYPE_SKILL:
+		case RSPLTYPE_INVALID:
+			break;
+		case RSPLTYPE_SCROLL:
+			RemoveScroll(id);
+			break;
+		case RSPLTYPE_CHARGES:
+			UseStaffCharge(id);
+			break;
 		case RSPLTYPE_SPELL:
 #ifdef _DEBUG
 			if (!debug_mode_key_inverted_v) {
@@ -117,17 +89,11 @@ void __fastcall UseMana(int id, int sn)
 			}
 #endif
 			break;
-		case RSPLTYPE_SCROLL:
-			RemoveScroll(id);
-			break;
-		case RSPLTYPE_CHARGES:
-			UseStaffCharge(id);
-			break;
 		}
 	}
 }
 
-BOOL __fastcall CheckSpell(int id, int sn, BYTE st, BOOL manaonly)
+BOOL CheckSpell(int id, int sn, char st, BOOL manaonly)
 {
 	BOOL result;
 
@@ -137,7 +103,7 @@ BOOL __fastcall CheckSpell(int id, int sn, BYTE st, BOOL manaonly)
 #endif
 
 	result = TRUE;
-	if (!manaonly && pcurs != 1) {
+	if (!manaonly && pcurs != CURSOR_HAND) {
 		result = FALSE;
 	} else {
 		if (st != RSPLTYPE_SKILL) {
@@ -152,23 +118,26 @@ BOOL __fastcall CheckSpell(int id, int sn, BYTE st, BOOL manaonly)
 	return result;
 }
 
-void __fastcall CastSpell(int id, int spl, int sx, int sy, int dx, int dy, BOOL caster, int spllvl)
+void CastSpell(int id, int spl, int sx, int sy, int dx, int dy, int caster, int spllvl)
 {
 	int i;
 	int dir; // missile direction
 
-	// ugly switch, but generates the right code
 	switch (caster) {
-	case TRUE:
+	case 1:
 		dir = monster[id]._mdir;
 		break;
-	case FALSE:
+	case 0:
 		// caster must be 0 already in this case, but oh well,
 		// it's needed to generate the right code
 		caster = 0;
 		dir = plr[id]._pdir;
 
+#ifdef HELLFIRE
+		if (spl == SPL_FIREWALL || spl == SPL_LIGHTWALL) {
+#else
 		if (spl == SPL_FIREWALL) {
+#endif
 			dir = plr[id]._pVar3;
 		}
 		break;
@@ -184,20 +153,68 @@ void __fastcall CastSpell(int id, int spl, int sx, int sy, int dx, int dy, BOOL 
 	if (spelldata[spl].sMissiles[0] == MIS_CBOLT) {
 		UseMana(id, SPL_CBOLT);
 
-		for (i = 0; i < (spllvl >> 1) + 3; i++) {
+		for (i = (spllvl >> 1) + 3; i > 0; i--) {
 			AddMissile(sx, sy, dx, dy, dir, MIS_CBOLT, caster, id, 0, spllvl);
 		}
 	}
 }
 
-// pnum: player index
-// rid: target player index
-void __fastcall DoResurrect(int pnum, int rid)
+static void PlacePlayer(int pnum)
+{
+	int nx, ny, max, min, x, y;
+	DWORD i;
+	BOOL done;
+
+	if (plr[pnum].plrlevel == currlevel) {
+		for (i = 0; i < 8; i++) {
+			nx = plr[pnum]._px + plrxoff2[i];
+			ny = plr[pnum]._py + plryoff2[i];
+
+			if (PosOkPlayer(pnum, nx, ny)) {
+				break;
+			}
+		}
+
+		if (!PosOkPlayer(pnum, nx, ny)) {
+			done = FALSE;
+
+			for (max = 1, min = -1; min > -50 && !done; max++, min--) {
+				for (y = min; y <= max && !done; y++) {
+					ny = plr[pnum]._py + y;
+
+					for (x = min; x <= max && !done; x++) {
+						nx = plr[pnum]._px + x;
+
+						if (PosOkPlayer(pnum, nx, ny)) {
+							done = TRUE;
+						}
+					}
+				}
+			}
+		}
+
+		plr[pnum]._px = nx;
+		plr[pnum]._py = ny;
+
+		dPlayer[nx][ny] = pnum + 1;
+
+		if (pnum == myplr) {
+			ViewX = nx;
+			ViewY = ny;
+		}
+	}
+}
+
+/**
+ * @param pnum player index
+ * @param rid target player index
+ */
+void DoResurrect(int pnum, int rid)
 {
 	int hp;
 
 	if ((char)rid != -1) {
-		AddMissile(plr[rid].WorldX, plr[rid].WorldY, plr[rid].WorldX, plr[rid].WorldY, 0, MIS_RESURRECTBEAM, 0, pnum, 0, 0);
+		AddMissile(plr[rid]._px, plr[rid]._py, plr[rid]._px, plr[rid]._py, 0, MIS_RESURRECTBEAM, 0, pnum, 0, 0);
 	}
 
 	if (pnum == myplr) {
@@ -214,76 +231,34 @@ void __fastcall DoResurrect(int pnum, int rid)
 
 		ClrPlrPath(rid);
 		plr[rid].destAction = ACTION_NONE;
-		plr[rid]._pInvincible = 0;
+		plr[rid]._pInvincible = FALSE;
+#ifndef HELLFIRE
 		PlacePlayer(rid);
+#endif
 
 		hp = 640;
+#ifndef HELLFIRE
 		if (plr[rid]._pMaxHPBase < 640) {
 			hp = plr[rid]._pMaxHPBase;
 		}
+#endif
 		SetPlayerHitPoints(rid, hp);
 
-		plr[rid]._pMana = 0;
 		plr[rid]._pHPBase = plr[rid]._pHitPoints + (plr[rid]._pMaxHPBase - plr[rid]._pMaxHP);
-		plr[rid]._pManaBase = plr[rid]._pMaxManaBase - plr[rid]._pMaxMana;
+		plr[rid]._pMana = 0;
+		plr[rid]._pManaBase = plr[rid]._pMana + (plr[rid]._pMaxManaBase - plr[rid]._pMaxMana);
 
 		CalcPlrInv(rid, TRUE);
 
 		if (plr[rid].plrlevel == currlevel) {
 			StartStand(rid, plr[rid]._pdir);
 		} else {
-			plr[rid]._pmode = 0;
+			plr[rid]._pmode = PM_STAND;
 		}
 	}
 }
 
-void __fastcall PlacePlayer(int pnum)
-{
-	int nx, ny, max, min, x, y;
-	DWORD i;
-	BOOL done;
-
-	if (plr[pnum].plrlevel == currlevel) {
-		for (i = 0; i < 8; i++) {
-			nx = plr[pnum].WorldX + plrxoff2[i];
-			ny = plr[pnum].WorldY + plryoff2[i];
-
-			if (PosOkPlayer(pnum, nx, ny)) {
-				break;
-			}
-		}
-
-		if (!PosOkPlayer(pnum, nx, ny)) {
-			done = FALSE;
-
-			for (max = 1, min = -1; min > -50 && !done; max++, min--) {
-				for (y = min; y <= max && !done; y++) {
-					ny = plr[pnum].WorldY + y;
-
-					for (x = min; x <= max && !done; x++) {
-						nx = plr[pnum].WorldX + x;
-
-						if (PosOkPlayer(pnum, nx, ny)) {
-							done = TRUE;
-						}
-					}
-				}
-			}
-		}
-
-		plr[pnum].WorldX = nx;
-		plr[pnum].WorldY = ny;
-
-		dPlayer[nx][ny] = pnum + 1;
-
-		if (pnum == myplr) {
-			ViewX = nx;
-			ViewY = ny;
-		}
-	}
-}
-
-void __fastcall DoHealOther(int pnum, int rid)
+void DoHealOther(int pnum, int rid)
 {
 	int i, j, hp;
 
@@ -292,16 +267,25 @@ void __fastcall DoHealOther(int pnum, int rid)
 	}
 
 	if ((char)rid != -1 && (plr[rid]._pHitPoints >> 6) > 0) {
-		hp = (random(57, 10) + 1) << 6;
+		hp = (random_(57, 10) + 1) << 6;
 
 		for (i = 0; i < plr[pnum]._pLevel; i++) {
-			hp += (random(57, 4) + 1) << 6;
+			hp += (random_(57, 4) + 1) << 6;
 		}
 
 		for (j = 0; j < GetSpellLevel(pnum, SPL_HEALOTHER); ++j) {
-			hp += (random(57, 6) + 1) << 6;
+			hp += (random_(57, 6) + 1) << 6;
 		}
 
+#ifdef HELLFIRE
+		if (plr[pnum]._pClass == PC_WARRIOR || plr[pnum]._pClass == PC_BARBARIAN) {
+			hp <<= 1;
+		} else if (plr[pnum]._pClass == PC_ROGUE || plr[pnum]._pClass == PC_BARD) {
+			hp += hp >> 1;
+		} else if (plr[pnum]._pClass == PC_MONK) {
+			hp *= 3;
+		}
+#else
 		if (plr[pnum]._pClass == PC_WARRIOR) {
 			hp <<= 1;
 		}
@@ -309,6 +293,7 @@ void __fastcall DoHealOther(int pnum, int rid)
 		if (plr[pnum]._pClass == PC_ROGUE) {
 			hp += hp >> 1;
 		}
+#endif
 
 		plr[rid]._pHitPoints += hp;
 
@@ -324,6 +309,39 @@ void __fastcall DoHealOther(int pnum, int rid)
 
 		drawhpflag = TRUE;
 	}
+}
+
+int GetSpellBookLevel(int s)
+{
+	if (gbIsSpawn) {
+		switch (s) {
+		case SPL_STONE:
+		case SPL_GUARDIAN:
+		case SPL_GOLEM:
+		case SPL_FLARE:
+		case SPL_BONESPIRIT:
+			return -1;
+		}
+	}
+
+	return spelldata[s].sBookLvl;
+}
+
+int GetSpellStaffLevel(int s)
+{
+	if (gbIsSpawn) {
+		switch (s) {
+		case SPL_STONE:
+		case SPL_GUARDIAN:
+		case SPL_GOLEM:
+		case SPL_APOCA:
+		case SPL_FLARE:
+		case SPL_BONESPIRIT:
+			return -1;
+		}
+	}
+
+	return spelldata[s].sStaffLvl;
 }
 
 DEVILUTION_END_NAMESPACE

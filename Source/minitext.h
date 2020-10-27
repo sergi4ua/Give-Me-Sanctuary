@@ -1,29 +1,43 @@
-//HEADER_GOES_HERE
+/**
+ * @file minitext.h
+ *
+ * Interface of scrolling dialog text.
+ */
 #ifndef __MINITEXT_H__
 #define __MINITEXT_H__
 
-extern int qtexty; // weak
-extern char *qtextptr;
-extern int qtextSpd;    // weak
-extern char qtextflag;  // weak
-extern int scrolltexty; // weak
-extern void *pMedTextCels;
-extern void *pTextBoxCels;
+DEVILUTION_BEGIN_NAMESPACE
 
-void __cdecl FreeQuestText();
-void __cdecl InitQuestText();
-void __fastcall InitQTextMsg(int m);
-void __cdecl DrawQTextBack();
-void __fastcall PrintQTextChr(int sx, int sy, BYTE *pCelBuff, int nCel);
-void __cdecl DrawQText();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int qtexty;
+extern const char *qtextptr;
+extern BOOLEAN qtextflag;
+extern BYTE *pMedTextCels;
+extern BYTE *pTextBoxCels;
+
+void FreeQuestText();
+void InitQuestText();
+void InitQTextMsg(int m);
+void DrawQTextBack();
+void PrintQTextChr(int sx, int sy, BYTE *pCelBuff, int nCel);
+void DrawQText();
 
 /* rdata */
 
-extern const unsigned char mfontframe[127];
-extern const unsigned char mfontkern[56];
+extern const BYTE mfontframe[128];
+extern const BYTE mfontkern[56];
 
 /* data */
 
 extern int qscroll_spd_tbl[9];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __MINITEXT_H__ */

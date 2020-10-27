@@ -1,37 +1,52 @@
-//HEADER_GOES_HERE
+/**
+ * @file effects.h
+ *
+ * Interface of functions for loading and playing sounds.
+ */
 #ifndef __EFFECTS_H__
 #define __EFFECTS_H__
 
-extern int sfxdelay; // weak
-extern int sfxdnum;
-extern HANDLE sfx_stream;
-extern TSFX *sfx_data_cur;
+DEVILUTION_BEGIN_NAMESPACE
 
-BOOL __fastcall effect_is_playing(int nSFX);
-void __cdecl sfx_stop();
-void __fastcall InitMonsterSND(int monst);
-void __cdecl FreeEffects();
-void __fastcall PlayEffect(int i, int mode);
-BOOL __fastcall calc_snd_position(int x, int y, int *plVolume, int *plPan);
-void __fastcall PlaySFX(int psfx);
-void __fastcall PlaySFX_priv(TSFX *pSFX, BOOL loc, int x, int y);
-void __fastcall stream_play(TSFX *pSFX, int lVolume, int lPan);
-int __fastcall RndSFX(int psfx);
-void __fastcall PlaySfxLoc(int psfx, int x, int y);
-void __cdecl FreeMonsterSnd();
-void __cdecl sound_stop();
-void __cdecl sound_update();
-void __cdecl effects_cleanup_sfx();
-void __cdecl stream_update();
-void __fastcall priv_sound_init(UCHAR bLoadMask);
-void __cdecl sound_init();
-void __stdcall effects_play_sound(char *snd_file);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int sfxdelay;
+extern int sfxdnum;
+extern HANDLE sghStream;
+extern TSFX *sgpStreamSFX;
+
+BOOL effect_is_playing(int nSFX);
+void stream_stop();
+void InitMonsterSND(int monst);
+void FreeMonsterSnd();
+void PlayEffect(int i, int mode);
+BOOL calc_snd_position(int x, int y, int *plVolume, int *plPan);
+void PlaySFX(int psfx);
+void PlaySFX_priv(TSFX *pSFX, BOOL loc, int x, int y);
+void stream_play(TSFX *pSFX, int lVolume, int lPan);
+int RndSFX(int psfx);
+void PlaySfxLoc(int psfx, int x, int y);
+void sound_stop();
+void sfx_stop();
+void sound_update();
+void stream_update();
+void effects_cleanup_sfx();
+void sound_init();
+void priv_sound_init(BYTE bLoadMask);
+void ui_sound_init();
+void effects_play_sound(const char *snd_file);
 
 /* rdata */
 
-extern const int effects_inf;              // weak
-extern const char monster_action_sounds[]; // idb
+extern const char MonstSndChar[];
 
 /* data */
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __EFFECTS_H__ */

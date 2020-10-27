@@ -1,21 +1,37 @@
-//HEADER_GOES_HERE
+/**
+ * @file help.h
+ *
+ * Interface of the in-game help text.
+ */
 #ifndef __HELP_H__
 #define __HELP_H__
 
-extern int help_select_line; // weak
-extern int dword_634494;     // weak
-extern int helpflag;
-extern int displayinghelp[22];
-extern int HelpTop; // weak
+DEVILUTION_BEGIN_NAMESPACE
 
-void __cdecl InitHelp();
-void __cdecl DrawHelp();
-void __fastcall DrawHelpLine(int always_0, int help_line_nr, char *text, text_color color);
-void __cdecl DisplayHelp();
-void __cdecl HelpScrollUp();
-void __cdecl HelpScrollDown();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int help_select_line;
+extern int dword_634494;
+extern BOOL helpflag;
+extern int displayinghelp[22];
+extern int HelpTop;
+
+void InitHelp();
+void DrawHelp();
+void DrawHelpLine(int x, int y, char *text, char color);
+void DisplayHelp();
+void HelpScrollUp();
+void HelpScrollDown();
 
 /* rdata */
 extern const char gszHelpText[];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __HELP_H__ */

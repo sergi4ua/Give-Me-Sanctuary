@@ -1,55 +1,70 @@
-//HEADER_GOES_HERE
+/**
+ * @file quests.cpp
+ *
+ * Interface of functionality for handling quests.
+ */
 #ifndef __QUESTS_H__
 #define __QUESTS_H__
 
-extern int qtopline; // idb
-extern int questlog; // weak
-extern void *pQLogCel;
-extern QuestStruct quests[MAXQUESTS];
-extern int qline; // weak
-extern int qlist[MAXQUESTS];
-extern int numqlines;  // weak
-extern int WaterDone;  // idb
-extern int ReturnLvlY; // idb
-extern int ReturnLvlX; // idb
-extern int ReturnLvlT; // idb
-extern int ALLQUESTS;  // idb
-extern int ReturnLvl;  // idb
+DEVILUTION_BEGIN_NAMESPACE
 
-void __cdecl InitQuests();
-void __cdecl CheckQuests();
-BOOLEAN __cdecl ForceQuests();
-BOOL __fastcall QuestStatus(int i);
-void __fastcall CheckQuestKill(int m, BOOL sendmsg);
-void __cdecl DrawButcher();
-void __fastcall DrawSkelKing(int q, int x, int y);
-void __fastcall DrawWarLord(int x, int y);
-void __fastcall DrawSChamber(int q, int x, int y);
-void __fastcall DrawLTBanner(int x, int y);
-void __fastcall DrawBlind(int x, int y);
-void __fastcall DrawBlood(int x, int y);
-void __fastcall DRLG_CheckQuests(int x, int y);
-void __cdecl SetReturnLvlPos();
-void __cdecl GetReturnLvlPos();
-void __cdecl ResyncMPQuests();
-void __cdecl ResyncQuests();
-void __fastcall PrintQLString(int x, int y, unsigned char cjustflag, char *str, int col);
-void __cdecl DrawQuestLog();
-void __cdecl StartQuestlog();
-void __cdecl QuestlogUp();
-void __cdecl QuestlogDown();
-void __cdecl QuestlogEnter();
-void __cdecl QuestlogESC();
-void __fastcall SetMultiQuest(int q, int s, int l, int v1);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int qtopline;
+extern BOOL questlog;
+extern BYTE *pQLogCel;
+extern QuestStruct quests[MAXQUESTS];
+extern int qline;
+extern int qlist[MAXQUESTS];
+extern int numqlines;
+extern int WaterDone;
+extern int ReturnLvlX;
+extern int ReturnLvlY;
+extern int ReturnLvlT;
+extern int ReturnLvl;
+
+void InitQuests();
+void CheckQuests();
+BOOL ForceQuests();
+BOOL QuestStatus(int i);
+void CheckQuestKill(int m, BOOL sendmsg);
+void DrawButcher();
+void DrawSkelKing(int q, int x, int y);
+void DrawWarLord(int x, int y);
+void DrawSChamber(int q, int x, int y);
+void DrawLTBanner(int x, int y);
+void DrawBlind(int x, int y);
+void DrawBlood(int x, int y);
+void DRLG_CheckQuests(int x, int y);
+void SetReturnLvlPos();
+void GetReturnLvlPos();
+void ResyncMPQuests();
+void ResyncQuests();
+void PrintQLString(int x, int y, BOOL cjustflag, const char *str, int col);
+void DrawQuestLog();
+void StartQuestlog();
+void QuestlogUp();
+void QuestlogDown();
+void QuestlogEnter();
+void QuestlogESC();
+void SetMultiQuest(int q, int s, int l, int v1);
 
 /* rdata */
 extern QuestData questlist[MAXQUESTS];
 extern char questxoff[7];
 extern char questyoff[7];
-extern char *questtrigstr[5];
+extern const char *constquesttrigstr[5];
 extern int QuestGroup1[3];
 extern int QuestGroup2[3];
 extern int QuestGroup3[3];
 extern int QuestGroup4[2];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __QUESTS_H__ */

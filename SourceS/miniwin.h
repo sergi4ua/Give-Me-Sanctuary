@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include <math.h>
 // work around https://reviews.llvm.org/D51265
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #include "macos_stdarg.h"
 #else
 #include <stdarg.h>
@@ -13,10 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-// For _rotr()
-#if !defined(_MSC_VER) && defined(DEVILUTION_ENGINE)
-#include <x86intrin.h>
-#endif
 
 #ifndef _WIN32
 #define __int8 char
@@ -26,13 +22,8 @@
 #endif
 
 #include "miniwin/misc.h"
-#include "miniwin/com.h"
-#include "miniwin/ui.h"
-#include "miniwin/thread.h"
-#include "miniwin/rand.h"
 #include "storm_full.h"
 
-#ifdef DEVILUTION_ENGINE
-#include "miniwin/misc_macro.h"
-#include "miniwin/com_macro.h"
+#ifndef MAX_PATH
+#define MAX_PATH 260
 #endif

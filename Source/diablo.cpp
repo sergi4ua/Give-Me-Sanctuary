@@ -1,47 +1,76 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file diablo.cpp
+ *
+ * Implementation of the main game initialization functions.
+ */
+#include "all.h"
+#include "paths.h"
+#include "../3rdParty/Storm/Source/storm.h"
+#include "../DiabloUI/diabloui.h"
+#include <config.h>
 
 DEVILUTION_BEGIN_NAMESPACE
 
-HWND ghMainWnd;
+SDL_Window *ghMainWnd;
+DWORD glSeedTbl[NUMLEVELS];
+int gnLevelTypeTbl[NUMLEVELS];
+#ifndef HELLFIRE
+int glEndSeed[NUMLEVELS];
 int glMid1Seed[NUMLEVELS];
 int glMid2Seed[NUMLEVELS];
-int gnLevelTypeTbl[NUMLEVELS];
-int MouseY;             // idb
-int MouseX;             // idb
-BOOL gbGameLoopStartup; // idb
-int glSeedTbl[NUMLEVELS];
-BOOL gbRunGame;
 int glMid3Seed[NUMLEVELS];
+#else
+int glEndSeed[NUMLEVELS + 1];
+int glMid1Seed[NUMLEVELS + 1];
+int glMid2Seed[NUMLEVELS + 1];
+int glMid3Seed[NUMLEVELS + 1];
+#endif
+int MouseX;
+int MouseY;
+BOOL gbGameLoopStartup;
+BOOL gbRunGame;
 BOOL gbRunGameResult;
-int zoomflag; // weak
-bool drawitems;
+BOOL zoomflag;
 BOOL gbProcessPlayers;
-int glEndSeed[NUMLEVELS];
 BOOL gbLoadGame;
-HINSTANCE ghInst; // idb
 int DebugMonsters[10];
-char cineflag;   // weak
-int drawpanflag; // weak
-int visiondebug; // weak
-int scrollflag;  /* unused */
+BOOLEAN cineflag;
+int force_redraw;
+BOOL visiondebug;
+/** unused */
+BOOL scrollflag;
 BOOL light4flag;
-int leveldebug;      // weak
-int monstdebug;      // weak
-int trigdebug;       /* unused */
-int setseed;         // weak
-int debugmonsttypes; // weak
-int PauseMode;       // weak
+BOOL leveldebug;
+BOOL monstdebug;
+/** unused */
+BOOL trigdebug;
+int setseed;
+int debugmonsttypes;
+int PauseMode;
+bool forceSpawn;
+#ifdef HELLFIRE
+BOOLEAN UseTheoQuest;
+BOOLEAN UseCowFarmer;
+BOOLEAN UseNestArt;
+BOOLEAN UseBardTest;
+BOOLEAN UseBarbarianTest;
+BOOLEAN UseMultiTest;
+#endif
 int sgnTimeoutCurs;
-char sgbMouseDown;     // weak
-int color_cycle_timer; // weak
+char sgbMouseDown;
+int color_cycle_timer;
+int ticks_per_sec = 20;
+WORD tick_delay = 50;
 
 /* rdata */
 
+/**
+ * Specifies whether to give the game exclusive access to the
+ * screen, as needed for efficient rendering in fullscreen mode.
+ */
 BOOL fullscreen = TRUE;
-#ifdef _DEBUG
 int showintrodebug = 1;
+#ifdef _DEBUG
 int questdebug = -1;
 int debug_mode_key_s;
 int debug_mode_key_w;
@@ -53,173 +82,206 @@ int dbgplr;
 int dbgqst;
 int dbgmon;
 int arrowdebug;
+#endif
 int frameflag;
 int frameend;
 int framerate;
 int framestart;
-#endif
+/** Specifies whether players are in non-PvP mode. */
 BOOL FriendlyMode = TRUE;
-char *spszMsgTbl[4] = {
+/** Default quick messages */
+const char *const spszMsgTbl[4] = {
 	"I need help! Come Here!",
 	"Follow me.",
 	"Here's something for you.",
 	"Now you DIE!"
-};                                                      // weak
-char *spszMsgKeyTbl[4] = { "F9", "F10", "F11", "F12" }; // weak
+};
+/** INI files variable names for quick message keys */
+const char *const spszMsgHotKeyTbl[4] = { "F9", "F10", "F11", "F12" };
 
-void __cdecl FreeGameMem()
+/** To know if these things have been done when we get to the diablo_deinit() function */
+BOOL was_archives_init = false;
+BOOL was_ui_init = false;
+BOOL was_snd_init = false;
+
+void FreeGameMem()
 {
 	music_stop();
 
 	MemFreeDbg(pDungeonCels);
 	MemFreeDbg(pMegaTiles);
 	MemFreeDbg(pLevelPieces);
-	MemFreeDbg(level_special_cel);
-	MemFreeDbg(pSpeedCels);
+	MemFreeDbg(pSpecialCels);
 
 	FreeMissiles();
 	FreeMonsters();
 	FreeObjectGFX();
-	FreeEffects();
+	FreeMonsterSnd();
 	FreeTownerGFX();
 }
 
-BOOL __fastcall StartGame(BOOL bNewGame, BOOL bSinglePlayer)
+BOOL StartGame(BOOL bNewGame, BOOL bSinglePlayer)
 {
 	BOOL fExitProgram;
 	unsigned int uMsg;
 
-	byte_678640 = 1;
+	gbSelectProvider = TRUE;
 
 	do {
 		fExitProgram = FALSE;
+#ifndef HELLFIRE
 		gbLoadGame = FALSE;
+#endif
 
 		if (!NetInit(bSinglePlayer, &fExitProgram)) {
 			gbRunGameResult = !fExitProgram;
 			break;
 		}
 
-		byte_678640 = 0;
+		gbSelectProvider = FALSE;
 
 		if (bNewGame || !gbValidSaveFile) {
 			InitLevels();
 			InitQuests();
 			InitPortals();
 			InitDungMsgs(myplr);
+#ifndef HELLFIRE
 		}
-		if (!gbValidSaveFile || !gbLoadGame)
+		if (!gbValidSaveFile || !gbLoadGame) {
+#else
+			if (!gbValidSaveFile && gbLoadGame)
+				inv_diablo_to_hellfire(myplr);
+#endif
 			uMsg = WM_DIABNEWGAME;
-		else
+		} else {
 			uMsg = WM_DIABLOADGAME;
-
+		}
 		run_game_loop(uMsg);
 		NetClose();
+#ifndef HELLFIRE
 		pfile_create_player_description(0, 0);
 	} while (gbRunGameResult);
+#else
+	} while (gbMaxPlayers == 1 || !gbRunGameResult);
+#endif
 
 	SNetDestroy();
 	return gbRunGameResult;
 }
-// 678640: using guessed type char byte_678640;
 
-void __fastcall run_game_loop(unsigned int uMsg)
+// Controller support: Actions to run after updating the cursor state.
+// Defined in SourceX/controls/plctrls.cpp.
+extern void finish_simulated_mouse_clicks(int current_mouse_x, int current_mouse_y);
+extern void plrctrls_after_check_curs_move();
+
+static bool ProcessInput()
 {
-	//int v3; // eax
-	BOOLEAN v5; // zf
-	//int v6; // eax
-	signed int v7;    // [esp+8h] [ebp-24h]
-	WNDPROC saveProc; // [esp+Ch] [ebp-20h]
-	MSG msg;          // [esp+10h] [ebp-1Ch]
+	if (PauseMode == 2) {
+		return false;
+	}
+	if (gbMaxPlayers == 1 && gmenu_is_active()) {
+		force_redraw |= 1;
+		return false;
+	}
 
-	nthread_ignore_mutex(1);
+	if (!gmenu_is_active() && sgnTimeoutCurs == CURSOR_NONE) {
+#ifndef USE_SDL1
+		finish_simulated_mouse_clicks(MouseX, MouseY);
+#endif
+		CheckCursMove();
+		plrctrls_after_check_curs_move();
+		track_process();
+	}
+
+	return true;
+}
+
+void run_game_loop(unsigned int uMsg)
+{
+	WNDPROC saveProc;
+	MSG msg;
+
+	nthread_ignore_mutex(TRUE);
 	start_game(uMsg);
+	assert(ghMainWnd);
 	saveProc = SetWindowProc(GM_Game);
 	control_update_life_mana();
-	msg_process_net_packets();
+	run_delta_info();
 	gbRunGame = TRUE;
 	gbProcessPlayers = TRUE;
 	gbRunGameResult = TRUE;
-	drawpanflag = 255;
+	force_redraw = 255;
 	DrawAndBlit();
 	PaletteFadeIn(8);
-	drawpanflag = 255;
-	gbGameLoopStartup = 1;
-	nthread_ignore_mutex(0);
+	force_redraw = 255;
+	gbGameLoopStartup = TRUE;
+	nthread_ignore_mutex(FALSE);
+
 	while (gbRunGame) {
-		diablo_color_cyc_logic();
-		if (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE)) {
-			SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-			while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-				if (msg.message == WM_QUIT) {
-					gbRunGameResult = FALSE;
-					gbRunGame = FALSE;
-					break;
-				}
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
+		while (PeekMessage(&msg)) {
+			if (msg.message == DVL_WM_QUIT) {
+				gbRunGameResult = FALSE;
+				gbRunGame = FALSE;
+				break;
 			}
-			if (!gbRunGame || (v7 = 1, !nthread_has_500ms_passed(0)))
-				v7 = 0;
-			SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
-			v5 = v7 == 0;
-		} else {
-			//_LOBYTE(v6) = nthread_has_500ms_passed();
-			v5 = nthread_has_500ms_passed(0) == 0;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 		}
-		if (!v5) {
-			multi_process_network_packets();
-			game_loop(gbGameLoopStartup);
-			msgcmd_send_chat();
-			gbGameLoopStartup = 0;
+		if (!gbRunGame)
+			break;
+		if (!nthread_has_500ms_passed(FALSE)) {
+			ProcessInput();
 			DrawAndBlit();
+			continue;
 		}
-#ifdef SLEEP
-		Sleep(1);
-#endif
+		diablo_color_cyc_logic();
+		multi_process_network_packets();
+		game_loop(gbGameLoopStartup);
+		gbGameLoopStartup = FALSE;
+		DrawAndBlit();
 	}
-	if ((unsigned char)gbMaxPlayers > 1u)
+
+	if (gbMaxPlayers > 1) {
 		pfile_write_hero();
+	}
+
 	pfile_flush_W();
 	PaletteFadeOut(8);
-	SetCursor_(CURSOR_NONE);
+	NewCursor(CURSOR_NONE);
 	ClearScreenBuffer();
-	drawpanflag = 255;
-	scrollrt_draw_game_screen(1);
-	SetWindowProc(saveProc);
+	force_redraw = 255;
+	scrollrt_draw_game_screen(TRUE);
+	saveProc = SetWindowProc(saveProc);
+	assert(saveProc == GM_Game);
 	free_game();
+
 	if (cineflag) {
 		cineflag = FALSE;
 		DoEnding();
 	}
 }
-// 525718: using guessed type char cineflag;
-// 52571C: using guessed type int drawpanflag;
-// 679660: using guessed type char gbMaxPlayers;
 
-void __fastcall start_game(unsigned int uMsg)
+void start_game(unsigned int uMsg)
 {
-	init_mutator();
+	zoomflag = TRUE;
+	CalcViewportGeometry();
 	cineflag = FALSE;
-	zoomflag = 1;
 	InitCursor();
 	InitLightTable();
 	LoadDebugGFX();
+	assert(ghMainWnd);
 	music_stop();
 	ShowProgress(uMsg);
 	gmenu_init_menu();
 	InitLevelCursor();
-	sgnTimeoutCurs = 0;
+	sgnTimeoutCurs = CURSOR_NONE;
 	sgbMouseDown = 0;
-	track_repeat_walk(0);
+	track_repeat_walk(FALSE);
 }
-// 52569C: using guessed type int zoomflag;
-// 525718: using guessed type char cineflag;
-// 525748: using guessed type char sgbMouseDown;
 
-void __cdecl free_game()
+void free_game()
 {
-	int i; // esi
+	int i;
 
 	FreeControlPan();
 	FreeInvGFX();
@@ -237,319 +299,224 @@ void __cdecl free_game()
 	FreeGameMem();
 }
 
-BOOL __cdecl diablo_get_not_running()
+void diablo_init()
 {
-	SetLastError(0);
-	CreateEvent(NULL, FALSE, FALSE, "DiabloEvent");
-	return GetLastError() != ERROR_ALREADY_EXISTS;
-}
+	init_create_window();
 
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-{
-	HINSTANCE hInst;
-	int nData;
-	char szFileName[MAX_PATH];
-	BOOL bNoEvent;
+	SFileEnableDirectAccess(TRUE);
+	init_archives();
+	was_archives_init = true;
 
-	hInst = hInstance;
-#ifndef DEBUGGER
-	diablo_reload_process(hInstance);
-#endif
-	ghInst = hInst;
+	if (forceSpawn)
+		gbIsSpawn = true;
 
-	if (RestrictedTest())
-		ErrOkDlg(IDD_DIALOG10, 0, "C:\\Src\\Diablo\\Source\\DIABLO.CPP", 877);
-	if (ReadOnlyTest()) {
-		if (!GetModuleFileName(ghInst, szFileName, sizeof(szFileName)))
-			szFileName[0] = '\0';
-		DirErrorDlg(szFileName);
-	}
+	UiInitialize();
+	UiSetSpawned(gbIsSpawn);
+	was_ui_init = true;
 
-	ShowCursor(FALSE);
-	srand(GetTickCount());
+	ReadOnlyTest();
+
 	InitHash();
-	fault_get_filter();
 
-	bNoEvent = diablo_get_not_running();
-	if (!diablo_find_window("Give Me Sanctuary") && bNoEvent) {
-#ifdef _DEBUG
-		SFileEnableDirectAccess(TRUE);
-#endif
-		diablo_init_screen();
-		diablo_parse_flags(lpCmdLine);
-		init_create_window(nCmdShow);
-		sound_init();
-		UiInitialize();
+	diablo_init_screen();
 
-#ifdef _DEBUG
-		if (showintrodebug)
-#endif
-			play_movie("gendata\\logo.smk", TRUE);
+	snd_init(NULL);
+	was_snd_init = true;
 
-		{
-			char szValueName[] = "Intro";
-			if (!SRegLoadValue("Give Me Sanctuary", szValueName, 0, &nData))
-				nData = 1;
-			if (nData)
-				play_movie("gendata\\diablo1.smk", TRUE);
-			SRegSaveValue("Give Me Sanctuary", szValueName, 0, 0);
-		}
-
-#ifdef _DEBUG
-		if (showintrodebug) {
-#endif
-			UiTitleDialog(7);
-			BlackPalette();
-#ifdef _DEBUG
-		}
-#endif
-
-		mainmenu_loop();
-		UiDestroy();
-		SaveGamma();
-
-		if (ghMainWnd) {
-			Sleep(300);
-			DestroyWindow(ghMainWnd);
-		}
-	}
-
-	return FALSE;
+	ui_sound_init();
 }
 
-void __fastcall diablo_parse_flags(char *args)
+void diablo_splash()
 {
-#ifdef _DEBUG
-	int n;   // edi
-	int v15; // eax
+	if (!showintrodebug)
+		return;
+
+	play_movie("gendata\\logo.smk", TRUE);
+
+#ifndef HELLFIRE
+	if (!gbIsSpawn)
 #endif
-	while (*args) {
-		for (; isspace(*args); ++args)
-			;
-		if (!_strcmpi("dd_emulate", args)) {
-			gbEmulate = 1;
-			args += strlen("dd_emulate");
-		} else if (!_strcmpi("dd_backbuf", args)) {
-			gbBackBuf = 1;
-			args += strlen("dd_backbuf");
-		} else if (!_strcmpi("ds_noduplicates", args)) {
-			gbDupSounds = FALSE;
-			args += strlen("ds_noduplicates");
-		} else {
-#ifdef _DEBUG
-			switch (tolower(*args++)) {
-			case '^': // god mod with all spells as skills
-				debug_mode_key_inverted_v = 1;
-				break;
-			case '$': // demi-god
-				debug_mode_dollar_sign = 1;
-				break;
-			/*case 'b': // enable drop log
-					debug_mode_key_b = 1;
-					break;*/
-			case 'd': // no startup video+???
-				showintrodebug = 0;
-				debug_mode_key_d = 1;
-				break;
-			case 'f': // draw fps
-				EnableFrameCount();
-				break;
-			case 'i': // disable network timeout
-				debug_mode_key_i = 1;
-				break;
-			/*case 'j': // <level>: init trigger at level
-					for ( ; isspace(*args); ++args )
-						;
-					for ( n = 0; isdigit(*args); n = v15 + 10 * n - 48 )
-						v15 = *args++;
-					debug_mode_key_J_trigger = n;
-					break;*/
-			case 'l': // <dtype> <level>: start in level as type
-				setlevel = 0;
-				for (leveldebug = 1; isspace(*args); ++args)
-					;
-				for (n = 0; isdigit(*args); n = v15 + 10 * n - 48)
-					v15 = *args++;
-				for (leveltype = n; isspace(*args); ++args)
-					;
-				for (n = 0; isdigit(*args); n = v15 + 10 * n - 48)
-					v15 = *args++;
-				currlevel = n;
-				plr[0].plrlevel = n;
-				break;
-			case 'm': // <mtype>: add debug monster, up to 10 allowed
-				for (monstdebug = 1; isspace(*args); ++args)
-					;
-				for (n = 0; isdigit(*args); n = v15 + 10 * n - 48)
-					v15 = *args++;
-				DebugMonsters[debugmonsttypes++] = n;
-				break;
-			case 'n': // disable startup video
-				showintrodebug = 0;
-				break;
-			case 'q': // <qnum>: force a certain quest
-				for (; isspace(*args); ++args)
-					;
-				for (n = 0; isdigit(*args); n = v15 + 10 * n - 48)
-					v15 = *args++;
-				questdebug = n;
-				break;
-			case 'r': // <seed>: set map seed to
-				for (; isspace(*args); ++args)
-					;
-				for (n = 0; isdigit(*args); n = v15 + 10 * n - 48)
-					v15 = *args++;
-				setseed = n;
-				break;
-			case 's': // unused
-				debug_mode_key_s = 1;
-				break;
-			case 't': // <qlvl>: sets current quest level
-				leveldebug = 1;
-				for (setlevel = 1; isspace(*args); ++args)
-					;
-				for (n = 0; isdigit(*args); n = v15 + 10 * n - 48)
-					v15 = *args++;
-				setlvlnum = n;
-				break;
-			case 'v': // draw yellow debug tiles
-				visiondebug = 1;
-				break;
-			case 'w': // rest of the cheats, some only in town
-				debug_mode_key_w = 1;
-				break;
-			case 'x':
-				fullscreen = FALSE;
-				break;
-			}
+	if (getIniBool(APP_NAME, "Intro", true)) {
+#ifndef HELLFIRE
+		play_movie("gendata\\diablo1.smk", TRUE);
 #else
-			tolower(*args++);
+		play_movie("gendata\\Hellfire.smk", TRUE);
 #endif
+		setIniValue(APP_NAME, "Intro", "0");
+	}
+
+	UiTitleDialog();
+}
+
+void diablo_deinit()
+{
+	if (was_snd_init) {
+		effects_cleanup_sfx();
+		sound_cleanup();
+	}
+	if (was_ui_init)
+		UiDestroy();
+	if (was_archives_init)
+		init_cleanup();
+	if (was_window_init)
+		dx_cleanup(); // Cleanup SDL surfaces stuff, so we have to do it before SDL_Quit().
+	if (was_fonts_init)
+		FontsCleanup();
+	if (SDL_WasInit(SDL_INIT_EVERYTHING & ~SDL_INIT_HAPTIC))
+		SDL_Quit();
+}
+
+void diablo_quit(int exitStatus)
+{
+	diablo_deinit();
+	exit(exitStatus);
+}
+
+int DiabloMain(int argc, char **argv)
+{
+	diablo_parse_flags(argc, argv);
+	diablo_init();
+	diablo_splash();
+	mainmenu_loop();
+	diablo_deinit();
+
+	return 0;
+}
+
+static void print_help_and_exit()
+{
+	printf("Options:\n");
+	printf("    %-20s %-30s\n", "-h, --help", "Print this message and exit");
+	printf("    %-20s %-30s\n", "--version", "Print the version and exit");
+	printf("    %-20s %-30s\n", "--data-dir", "Specify the folder of diabdat.mpq");
+	printf("    %-20s %-30s\n", "--save-dir", "Specify the folder of save files");
+	printf("    %-20s %-30s\n", "-n", "Skip startup videos");
+	printf("    %-20s %-30s\n", "-f", "Display frames per second");
+	printf("    %-20s %-30s\n", "-x", "Run in windowed mode");
+	printf("    %-20s %-30s\n", "--spawn", "Force spawn mode even if diabdat.mpq is found");
+#ifdef HELLFIRE
+	printf("    %-20s %-30s\n", "--theoquest", "Enable the Theo quest");
+	printf("    %-20s %-30s\n", "--cowquest", "Enable the Cow quest");
+	printf("    %-20s %-30s\n", "--nestart", "Use alternate nest palette");
+	printf("    %-20s %-30s\n", "--bardtest", "Enable the Bard class");
+	printf("    %-20s %-30s\n", "--barbariantest", "Enable the Barbarian class");
+#endif
+#ifdef _DEBUG
+	printf("\nDebug options:\n");
+	printf("    %-20s %-30s\n", "-d", "Increaased item drops");
+	printf("    %-20s %-30s\n", "-w", "Enable cheats");
+	printf("    %-20s %-30s\n", "-$", "Enable god mode");
+	printf("    %-20s %-30s\n", "-^", "Enable god mode and debug tools");
+	//printf("    %-20s %-30s\n", "-b", "Enable item drop log");
+	printf("    %-20s %-30s\n", "-v", "Highlight visibility");
+	printf("    %-20s %-30s\n", "-i", "Ignore network timeout");
+	//printf("    %-20s %-30s\n", "-j <##>", "Init trigger at level");
+	printf("    %-20s %-30s\n", "-l <##> <##>", "Start in level as type");
+	printf("    %-20s %-30s\n", "-m <##>", "Add debug monster, up to 10 allowed");
+	printf("    %-20s %-30s\n", "-q <#>", "Force a certain quest");
+	printf("    %-20s %-30s\n", "-r <##########>", "Set map seed");
+	printf("    %-20s %-30s\n", "-t <##>", "Set current quest level");
+#endif
+	printf("\nReport bugs at https://github.com/diasurgical/devilutionX/\n");
+	diablo_quit(0);
+}
+
+void diablo_parse_flags(int argc, char **argv)
+{
+	for (int i = 1; i < argc; i++) {
+		if (strcasecmp("-h", argv[i]) == 0 || strcasecmp("--help", argv[i]) == 0) {
+			print_help_and_exit();
+		} else if (strcasecmp("--version", argv[i]) == 0) {
+			printf("%s v%s\n", PROJECT_NAME, PROJECT_VERSION);
+			diablo_quit(0);
+		} else if (strcasecmp("--data-dir", argv[i]) == 0) {
+			SetBasePath(argv[++i]);
+		} else if (strcasecmp("--save-dir", argv[i]) == 0) {
+			SetPrefPath(argv[++i]);
+		} else if (strcasecmp("-n", argv[i]) == 0) {
+			showintrodebug = FALSE;
+		} else if (strcasecmp("-f", argv[i]) == 0) {
+			EnableFrameCount();
+		} else if (strcasecmp("-x", argv[i]) == 0) {
+			fullscreen = FALSE;
+		} else if (strcasecmp("--spawn", argv[i]) == 0) {
+			forceSpawn = TRUE;
+#ifdef HELLFIRE
+		} else if (strcasecmp("--theoquest", argv[i]) == 0) {
+			UseTheoQuest = TRUE;
+		} else if (strcasecmp("--cowquest", argv[i]) == 0) {
+			UseCowFarmer = TRUE;
+		} else if (strcasecmp("--nestart", argv[i]) == 0) {
+			UseNestArt = TRUE;
+		} else if (strcasecmp("--bardtest", argv[i]) == 0) {
+			UseBardTest = TRUE;
+		} else if (strcasecmp("--barbariantest", argv[i]) == 0) {
+			UseBarbarianTest = TRUE;
+#endif
+#ifdef _DEBUG
+		} else if (strcasecmp("-^", argv[i]) == 0) {
+			debug_mode_key_inverted_v = TRUE;
+		} else if (strcasecmp("-$", argv[i]) == 0) {
+			debug_mode_dollar_sign = TRUE;
+			/*
+		} else if (strcasecmp("-b", argv[i]) == 0) {
+			debug_mode_key_b = 1;
+		*/
+		} else if (strcasecmp("-d", argv[i]) == 0) {
+			debug_mode_key_d = TRUE;
+		} else if (strcasecmp("-i", argv[i]) == 0) {
+			debug_mode_key_i = TRUE;
+			/*
+		} else if (strcasecmp("-j", argv[i]) == 0) {
+			debug_mode_key_J_trigger = argv[++i];
+		*/
+		} else if (strcasecmp("-l", argv[i]) == 0) {
+			setlevel = FALSE;
+			leveldebug = TRUE;
+			leveltype = SDL_atoi(argv[++i]);
+			currlevel = SDL_atoi(argv[++i]);
+			plr[0].plrlevel = currlevel;
+		} else if (strcasecmp("-m", argv[i]) == 0) {
+			monstdebug = TRUE;
+			DebugMonsters[debugmonsttypes++] = SDL_atoi(argv[++i]);
+		} else if (strcasecmp("-q", argv[i]) == 0) {
+			questdebug = SDL_atoi(argv[++i]);
+		} else if (strcasecmp("-r", argv[i]) == 0) {
+			setseed = SDL_atoi(argv[++i]);
+		} else if (strcasecmp("-s", argv[i]) == 0) {
+			debug_mode_key_s = TRUE;
+		} else if (strcasecmp("-t", argv[i]) == 0) {
+			leveldebug = TRUE;
+			setlevel = TRUE;
+			setlvlnum = SDL_atoi(argv[++i]);
+		} else if (strcasecmp("-v", argv[i]) == 0) {
+			visiondebug = TRUE;
+		} else if (strcasecmp("-w", argv[i]) == 0) {
+			debug_mode_key_w = TRUE;
+#endif
+		} else {
+			printf("unrecognized option '%s'\n", argv[i]);
+			print_help_and_exit();
 		}
 	}
 }
-// 52A548: using guessed type char gbBackBuf;
-// 52A549: using guessed type char gbEmulate;
 
-void __cdecl diablo_init_screen()
+void diablo_init_screen()
 {
-	int i;
-
-	MouseX = 320;
-	MouseY = 240;
+	MouseX = SCREEN_WIDTH / 2;
+	MouseY = SCREEN_HEIGHT / 2;
+	if (!sgbControllerActive)
+		SetCursorPos(MouseX, MouseY);
 	ScrollInfo._sdx = 0;
 	ScrollInfo._sdy = 0;
 	ScrollInfo._sxoff = 0;
 	ScrollInfo._syoff = 0;
 	ScrollInfo._sdir = SDIR_NONE;
 
-	for (i = 0; i < 1024; i++)
-		screen_y_times_768[i] = i * 768;
-
 	ClrDiabloMsg();
 }
 
-BOOL __fastcall diablo_find_window(LPCSTR lpClassName)
-{
-	HWND result; // eax
-	HWND v2;     // esi
-	HWND v3;     // eax
-	HWND v4;     // edi
-
-	result = FindWindow(lpClassName, 0);
-	v2 = result;
-	if (!result)
-		return 0;
-
-	v3 = GetLastActivePopup(result);
-	if (v3)
-		v2 = v3;
-	v4 = GetTopWindow(v2);
-	if (!v4)
-		v4 = v2;
-	SetForegroundWindow(v2);
-	SetFocus(v4);
-	return 1;
-}
-
-void __fastcall diablo_reload_process(HMODULE hModule)
-{
-	char *i;                // eax
-	DWORD dwSize;           // esi
-	BOOL v3;                // edi
-	_DWORD *v4;             // eax
-	_DWORD *v5;             // esi
-	HWND v6;                // eax
-	char Name[276];         // [esp+Ch] [ebp-29Ch]
-	char Filename[260];     // [esp+120h] [ebp-188h]
-	STARTUPINFOA si;        // [esp+224h] [ebp-84h]
-	SYSTEM_INFO sinf;       // [esp+268h] [ebp-40h]
-	PROCESS_INFORMATION pi; // [esp+28Ch] [ebp-1Ch]
-	DWORD dwProcessId;      // [esp+29Ch] [ebp-Ch]
-	HANDLE hMap;            // [esp+2A0h] [ebp-8h]
-	HWND hWnd;              // [esp+2A4h] [ebp-4h]
-
-	//*Filename = empty_string;
-	memset(Filename, 0, sizeof(Filename));
-	//	*(_WORD *)&Filename[257] = 0;
-	//	Filename[259] = 0;
-	GetModuleFileName(hModule, Filename, 0x104u);
-	wsprintf(Name, "Reload-%s", Filename);
-	for (i = Name; *i; ++i) {
-		if (*i == '\\')
-			*i = '/';
-	}
-	GetSystemInfo(&sinf);
-	dwSize = sinf.dwPageSize;
-	if (sinf.dwPageSize < 4096)
-		dwSize = 4096;
-	hMap = CreateFileMapping((HANDLE)0xFFFFFFFF, NULL, SEC_COMMIT | PAGE_READWRITE, 0, dwSize, Name);
-	v3 = GetLastError() != ERROR_ALREADY_EXISTS;
-	if (hMap) {
-		v4 = (unsigned int *)MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, dwSize);
-		v5 = v4;
-		if (v4) {
-			if (v3) {
-				*v4 = -1;
-				v4[1] = 0;
-				memset(&si, 0, sizeof(si));
-				si.cb = sizeof(si);
-				CreateProcess(Filename, NULL, NULL, NULL, FALSE, CREATE_NEW_PROCESS_GROUP, NULL, NULL, &si, &pi);
-				WaitForInputIdle(pi.hProcess, 0xFFFFFFFF);
-				CloseHandle(pi.hThread);
-				CloseHandle(pi.hProcess);
-				while (*v5 < 0)
-					Sleep(1000);
-				UnmapViewOfFile(v5);
-				CloseHandle(hMap);
-				ExitProcess(0);
-			}
-			if (InterlockedIncrement((LPLONG)v4)) {
-				v6 = GetForegroundWindow();
-				do {
-					hWnd = v6;
-					v6 = GetWindow(v6, 3u);
-				} while (v6);
-				while (1) {
-					GetWindowThreadProcessId(hWnd, &dwProcessId);
-					if (dwProcessId == v5[1])
-						break;
-					hWnd = GetWindow(hWnd, 2u);
-					if (!hWnd)
-						goto LABEL_23;
-				}
-				SetForegroundWindow(hWnd);
-			LABEL_23:
-				UnmapViewOfFile(v5);
-				CloseHandle(hMap);
-				ExitProcess(0);
-			}
-			v5[1] = GetCurrentProcessId();
-		}
-	}
-}
-
-BOOL __cdecl PressEscKey()
+BOOL PressEscKey()
 {
 	BOOL rv = FALSE;
 
@@ -558,13 +525,13 @@ BOOL __cdecl PressEscKey()
 		rv = TRUE;
 	}
 	if (helpflag) {
-		helpflag = 0;
+		helpflag = FALSE;
 		rv = TRUE;
 	}
 
 	if (qtextflag) {
-		qtextflag = 0;
-		sfx_stop();
+		qtextflag = FALSE;
+		stream_stop();
 		rv = TRUE;
 	} else if (stextflag) {
 		STextESC();
@@ -580,134 +547,120 @@ BOOL __cdecl PressEscKey()
 		rv = TRUE;
 	}
 	if (dropGoldFlag) {
-		control_drop_gold(VK_ESCAPE);
+		control_drop_gold(DVL_VK_ESCAPE);
 		rv = TRUE;
 	}
 	if (spselflag) {
-		spselflag = 0;
+		spselflag = FALSE;
 		rv = TRUE;
 	}
 
 	return rv;
 }
-// 4B84DC: using guessed type int dropGoldFlag;
-// 4B8960: using guessed type int talkflag;
-// 4B8C98: using guessed type int spselflag;
-// 52575C: using guessed type int doomflag;
-// 52B9F0: using guessed type char msgdelay;
-// 52B9F1: using guessed type char msgflag;
-// 646D00: using guessed type char qtextflag;
-// 6AA705: using guessed type char stextflag;
 
-LRESULT CALLBACK DisableInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static void GetMousePos(LPARAM lParam)
+{
+	MouseX = (short)(lParam & 0xffff);
+	MouseY = (short)((lParam >> 16) & 0xffff);
+}
+
+LRESULT DisableInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
-	case WM_KEYDOWN:
-	case WM_KEYUP:
-	case WM_CHAR:
-	case WM_SYSKEYDOWN:
-	case WM_SYSCOMMAND:
-	case WM_MOUSEMOVE:
+	case DVL_WM_KEYDOWN:
+	case DVL_WM_KEYUP:
+	case DVL_WM_CHAR:
+	case DVL_WM_SYSKEYDOWN:
+	case DVL_WM_SYSCOMMAND:
+	case DVL_WM_MOUSEMOVE:
+		GetMousePos(lParam);
 		return 0;
-	case WM_LBUTTONDOWN:
-		if (sgbMouseDown == 0) {
-			sgbMouseDown = 1;
-			SetCapture(hWnd);
-		}
+	case DVL_WM_LBUTTONDOWN:
+		if (sgbMouseDown != 0)
+			return 0;
+		sgbMouseDown = 1;
 		return 0;
-	case WM_LBUTTONUP:
-		if (sgbMouseDown == 1) {
-			sgbMouseDown = 0;
-			ReleaseCapture();
-		}
+	case DVL_WM_LBUTTONUP:
+		if (sgbMouseDown != 1)
+			return 0;
+		sgbMouseDown = 0;
 		return 0;
-	case WM_RBUTTONDOWN:
-		if (sgbMouseDown == 0) {
-			sgbMouseDown = 2;
-			SetCapture(hWnd);
-		}
+	case DVL_WM_RBUTTONDOWN:
+		if (sgbMouseDown != 0)
+			return 0;
+		sgbMouseDown = 2;
 		return 0;
-	case WM_RBUTTONUP:
-		if (sgbMouseDown == 2) {
-			sgbMouseDown = 0;
-			ReleaseCapture();
-		}
+	case DVL_WM_RBUTTONUP:
+		if (sgbMouseDown != 2)
+			return 0;
+		sgbMouseDown = 0;
 		return 0;
-	case WM_CAPTURECHANGED:
-		if (hWnd != (HWND)lParam)
-			sgbMouseDown = 0;
+	case DVL_WM_CAPTURECHANGED:
+		if (hWnd == (HWND)lParam)
+			return 0;
+		sgbMouseDown = 0;
 		return 0;
 	}
 
 	return MainWndProc(hWnd, uMsg, wParam, lParam);
 }
-// 525748: using guessed type char sgbMouseDown;
 
-LRESULT CALLBACK GM_Game(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT GM_Game(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg) {
-	case WM_KEYDOWN:
+	case DVL_WM_KEYDOWN:
 		PressKey(wParam);
 		return 0;
-	case WM_KEYUP:
+	case DVL_WM_KEYUP:
 		ReleaseKey(wParam);
 		return 0;
-	case WM_CHAR:
+	case DVL_WM_CHAR:
 		PressChar(wParam);
 		return 0;
-	case WM_SYSKEYDOWN:
+	case DVL_WM_SYSKEYDOWN:
 		if (PressSysKey(wParam))
 			return 0;
 		break;
-	case WM_SYSCOMMAND:
-		if (wParam == SC_CLOSE) {
+	case DVL_WM_SYSCOMMAND:
+		if (wParam == DVL_SC_CLOSE) {
 			gbRunGame = FALSE;
 			gbRunGameResult = FALSE;
 			return 0;
 		}
 		break;
-	case WM_MOUSEMOVE:
-		MouseX = LOWORD(lParam);
-		MouseY = HIWORD(lParam);
-		gmenu_on_mouse_move(LOWORD(lParam));
+	case DVL_WM_MOUSEMOVE:
+		GetMousePos(lParam);
+		gmenu_on_mouse_move();
 		return 0;
-	case WM_LBUTTONDOWN:
-		MouseX = LOWORD(lParam);
-		MouseY = HIWORD(lParam);
+	case DVL_WM_LBUTTONDOWN:
+		GetMousePos(lParam);
 		if (sgbMouseDown == 0) {
 			sgbMouseDown = 1;
-			SetCapture(hWnd);
 			track_repeat_walk(LeftMouseDown(wParam));
 		}
 		return 0;
-	case WM_LBUTTONUP:
-		MouseX = LOWORD(lParam);
-		MouseY = HIWORD(lParam);
+	case DVL_WM_LBUTTONUP:
+		GetMousePos(lParam);
 		if (sgbMouseDown == 1) {
 			sgbMouseDown = 0;
 			LeftMouseUp();
 			track_repeat_walk(FALSE);
-			ReleaseCapture();
 		}
 		return 0;
-	case WM_RBUTTONDOWN:
-		MouseX = LOWORD(lParam);
-		MouseY = HIWORD(lParam);
+	case DVL_WM_RBUTTONDOWN:
+		GetMousePos(lParam);
 		if (sgbMouseDown == 0) {
 			sgbMouseDown = 2;
-			SetCapture(hWnd);
 			RightMouseDown();
 		}
 		return 0;
-	case WM_RBUTTONUP:
-		MouseX = LOWORD(lParam);
-		MouseY = HIWORD(lParam);
+	case DVL_WM_RBUTTONUP:
+		GetMousePos(lParam);
 		if (sgbMouseDown == 2) {
 			sgbMouseDown = 0;
-			ReleaseCapture();
 		}
 		return 0;
-	case WM_CAPTURECHANGED:
+	case DVL_WM_CAPTURECHANGED:
 		if (hWnd != (HWND)lParam) {
 			sgbMouseDown = 0;
 			track_repeat_walk(FALSE);
@@ -725,13 +678,12 @@ LRESULT CALLBACK GM_Game(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			pfile_write_hero();
 		nthread_ignore_mutex(TRUE);
 		PaletteFadeOut(8);
-		FreeMonsterSnd();
+		sound_stop();
 		music_stop();
 		track_repeat_walk(FALSE);
 		sgbMouseDown = 0;
-		ReleaseCapture();
 		ShowProgress(uMsg);
-		drawpanflag = 255;
+		force_redraw = 255;
 		DrawAndBlit();
 		if (gbRunGame)
 			PaletteFadeIn(8);
@@ -742,100 +694,65 @@ LRESULT CALLBACK GM_Game(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	return MainWndProc(hWnd, uMsg, wParam, lParam);
 }
-// 52571C: using guessed type int drawpanflag;
-// 525748: using guessed type char sgbMouseDown;
-// 679660: using guessed type char gbMaxPlayers;
 
-BOOL __fastcall LeftMouseDown(int wParam)
+BOOL LeftMouseDown(int wParam)
 {
-	if (gmenu_left_mouse(1) || control_check_talk_btn() || sgnTimeoutCurs)
-		return 0;
-	if (deathflag) {
-		control_check_btn_press();
-		return 0;
-	}
-	if (PauseMode == 2)
-		return 0;
-	if (doomflag) {
-		doom_close();
-		return 0;
-	}
-	if (spselflag) {
-		SetSpell();
-		return 0;
-	}
-	if (stextflag) {
-		CheckStoreBtn();
-		return 0;
-	}
-	if (MouseY >= 352) {
-		if (!talkflag && !dropGoldFlag) {
-			if (!gmenu_exception())
-				CheckInvScrn();
+	if (!gmenu_left_mouse(TRUE) && !control_check_talk_btn() && sgnTimeoutCurs == CURSOR_NONE) {
+		if (deathflag) {
+			control_check_btn_press();
+		} else if (PauseMode != 2) {
+			if (doomflag) {
+				doom_close();
+			} else if (spselflag) {
+				SetSpell();
+			} else if (stextflag != STORE_NONE) {
+				CheckStoreBtn();
+			} else if (MouseY < PANEL_TOP || MouseX < PANEL_LEFT || MouseX >= PANEL_LEFT + PANEL_WIDTH) {
+				if (!gmenu_is_active() && !TryIconCurs()) {
+					if (questlog && MouseX > 32 && MouseX < 288 && MouseY > 32 && MouseY < 308) {
+						QuestlogESC();
+					} else if (qtextflag) {
+						qtextflag = FALSE;
+						stream_stop();
+					} else if (chrflag && MouseX < SPANEL_WIDTH && MouseY < SPANEL_HEIGHT) {
+						CheckChrBtns();
+					} else if (invflag && MouseX > RIGHT_PANEL && MouseY < SPANEL_HEIGHT) {
+						if (!dropGoldFlag)
+							CheckInvItem();
+					} else if (sbookflag && MouseX > RIGHT_PANEL && MouseY < SPANEL_HEIGHT) {
+						CheckSBook();
+					} else if (pcurs >= CURSOR_FIRSTITEM) {
+						if (TryInvPut()) {
+							NetSendCmdPItem(TRUE, CMD_PUTITEM, cursmx, cursmy);
+							NewCursor(CURSOR_HAND);
+						}
+					} else {
+						if (plr[myplr]._pStatPts != 0 && !spselflag)
+							CheckLvlBtn();
+						if (!lvlbtndown)
+							return LeftMouseCmd(wParam == DVL_MK_SHIFT + DVL_MK_LBUTTON);
+					}
+				}
+			} else {
+				if (!talkflag && !dropGoldFlag && !gmenu_is_active())
+					CheckInvScrn();
+				DoPanBtn();
+				if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM)
+					NewCursor(CURSOR_HAND);
+			}
 		}
-		DoPanBtn();
-		if (pcurs <= 1 || pcurs >= 12)
-			return 0;
-		goto LABEL_48;
 	}
-	if (gmenu_exception() || TryIconCurs())
-		return 0;
-	if (questlog && MouseX > 32 && MouseX < 288 && MouseY > 32 && MouseY < 308) {
-		QuestlogESC();
-		return 0;
-	}
-	if (qtextflag) {
-		qtextflag = FALSE;
-		sfx_stop();
-		return 0;
-	}
-	if (chrflag && MouseX < 320) {
-		CheckChrBtns();
-		return 0;
-	}
-	if (invflag && MouseX > 320) {
-		if (!dropGoldFlag)
-			CheckInvItem();
-		return 0;
-	}
-	if (sbookflag && MouseX > 320) {
-		CheckSBook();
-		return 0;
-	}
-	if (pcurs >= CURSOR_FIRSTITEM) {
-		if (!TryInvPut())
-			return 0;
-		NetSendCmdPItem(TRUE, CMD_PUTITEM, cursmx, cursmy);
-	LABEL_48:
-		SetCursor_(CURSOR_HAND);
-		return 0;
-	}
-	if (plr[myplr]._pStatPts && !spselflag)
-		CheckLvlBtn();
-	if (!lvlbtndown)
-		return LeftMouseCmd(wParam == MK_SHIFT + MK_LBUTTON);
-	return 0;
-}
-// 484368: using guessed type int FriendlyMode;
-// 4B84DC: using guessed type int dropGoldFlag;
-// 4B851C: using guessed type int lvlbtndown;
-// 4B8960: using guessed type int talkflag;
-// 4B8968: using guessed type int sbookflag;
-// 4B8C98: using guessed type int spselflag;
-// 4B8CC0: using guessed type char pcursitem;
-// 4B8CC1: using guessed type char pcursobj;
-// 4B8CC2: using guessed type char pcursplr;
-// 525740: using guessed type int PauseMode;
-// 52575C: using guessed type int doomflag;
-// 646D00: using guessed type char qtextflag;
-// 69BD04: using guessed type int questlog;
-// 6AA705: using guessed type char stextflag;
 
-BOOL __fastcall LeftMouseCmd(BOOL bShift)
+	return FALSE;
+}
+
+BOOL LeftMouseCmd(BOOL bShift)
 {
 	BOOL bNear;
 
-	if (!leveltype) {
+	assert(MouseY < PANEL_TOP || MouseX < PANEL_LEFT || MouseX >= PANEL_LEFT + PANEL_WIDTH);
+
+	if (leveltype == DTYPE_TOWN) {
 		if (pcursitem != -1 && pcurs == CURSOR_HAND)
 			NetSendCmdLocParam1(TRUE, invflag ? CMD_GOTOGETITEM : CMD_GOTOAGETITEM, cursmx, cursmy, pcursitem);
 		if (pcursmonst != -1)
@@ -843,9 +760,9 @@ BOOL __fastcall LeftMouseCmd(BOOL bShift)
 		if (pcursitem == -1 && pcursmonst == -1 && pcursplr == -1)
 			return TRUE;
 	} else {
-		bNear = abs(plr[myplr].WorldX - cursmx) < 2 && abs(plr[myplr].WorldY - cursmy) < 2;
+		bNear = abs(plr[myplr]._px - cursmx) < 2 && abs(plr[myplr]._py - cursmy) < 2;
 		if (pcursitem != -1 && pcurs == CURSOR_HAND && !bShift) {
-			NetSendCmdLocParam1(pcurs, invflag ? CMD_GOTOGETITEM : CMD_GOTOAGETITEM, cursmx, cursmy, pcursitem);
+			NetSendCmdLocParam1(TRUE, invflag ? CMD_GOTOGETITEM : CMD_GOTOAGETITEM, cursmx, cursmy, pcursitem);
 		} else if (pcursobj != -1 && (!bShift || bNear && object[pcursobj]._oBreak == 1)) {
 			NetSendCmdLocParam1(TRUE, pcurs == CURSOR_DISARM ? CMD_DISARMXY : CMD_OPOBJXY, cursmx, cursmy, pcursobj);
 		} else if (plr[myplr]._pwtype == WT_RANGED) {
@@ -884,76 +801,68 @@ BOOL __fastcall LeftMouseCmd(BOOL bShift)
 	return FALSE;
 }
 
-BOOLEAN __cdecl TryIconCurs()
+BOOL TryIconCurs()
 {
-	unsigned char v0; // dl
-	int v1;           // edx
-	int v2;           // eax
-	int v3;           // eax
-	int v4;           // ST0C_4
-	int v5;           // eax
-
-	switch (pcurs) {
-	case CURSOR_RESURRECT:
-		v0 = CMD_RESURRECT;
-	LABEL_3:
-		NetSendCmdParam1(TRUE, v0, pcursplr);
-		return 1;
-	case CURSOR_HEALOTHER:
-		v0 = CMD_HEALOTHER;
-		goto LABEL_3;
-	case CURSOR_TELEKINESIS:
+	if (pcurs == CURSOR_RESURRECT) {
+		NetSendCmdParam1(TRUE, CMD_RESURRECT, pcursplr);
+		return TRUE;
+	} else if (pcurs == CURSOR_HEALOTHER) {
+		NetSendCmdParam1(TRUE, CMD_HEALOTHER, pcursplr);
+		return TRUE;
+	} else if (pcurs == CURSOR_TELEKINESIS) {
 		DoTelekinesis();
-		return 1;
-	case CURSOR_IDENTIFY:
+		return TRUE;
+	} else if (pcurs == CURSOR_IDENTIFY) {
 		if (pcursinvitem != -1) {
 			CheckIdentify(myplr, pcursinvitem);
-			return 1;
+		} else {
+			NewCursor(CURSOR_HAND);
 		}
-	LABEL_26:
-		SetCursor_(CURSOR_HAND);
-		return 1;
-	case CURSOR_REPAIR:
+		return TRUE;
+	} else if (pcurs == CURSOR_REPAIR) {
 		if (pcursinvitem != -1) {
 			DoRepair(myplr, pcursinvitem);
-			return 1;
+		} else {
+			NewCursor(CURSOR_HAND);
 		}
-		goto LABEL_26;
-	case CURSOR_RECHARGE:
+		return TRUE;
+	} else if (pcurs == CURSOR_RECHARGE) {
 		if (pcursinvitem != -1) {
 			DoRecharge(myplr, pcursinvitem);
-			return 1;
-		}
-		goto LABEL_26;
-	case CURSOR_TELEPORT:
-		v1 = plr[myplr]._pTSpell;
-		if (pcursmonst == -1) {
-			if (pcursplr == -1) {
-				v4 = GetSpellLevel(myplr, v1);
-				v5 = 21720 * myplr;
-				_LOWORD(v5) = plr[myplr]._pTSpell;
-				NetSendCmdLocParam2(TRUE, CMD_TSPELLXY, cursmx, cursmy, v5, v4);
-			} else {
-				v3 = GetSpellLevel(myplr, v1);
-				NetSendCmdParam3(TRUE, CMD_TSPELLPID, pcursplr, plr[myplr]._pTSpell, v3);
-			}
 		} else {
-			v2 = GetSpellLevel(myplr, v1);
-			NetSendCmdParam3(TRUE, CMD_TSPELLID, pcursmonst, plr[myplr]._pTSpell, v2);
+			NewCursor(CURSOR_HAND);
 		}
-		goto LABEL_26;
+		return TRUE;
+#ifdef HELLFIRE
+	} else if (pcurs == CURSOR_OIL) {
+		if (pcursinvitem != -1) {
+			DoOil(myplr, pcursinvitem);
+		} else {
+			SetCursor_(CURSOR_HAND);
+		}
+		return TRUE;
+#endif
+	} else if (pcurs == CURSOR_TELEPORT) {
+		if (pcursmonst != -1) {
+			NetSendCmdParam3(TRUE, CMD_TSPELLID, pcursmonst, plr[myplr]._pTSpell, GetSpellLevel(myplr, plr[myplr]._pTSpell));
+		} else if (pcursplr != -1) {
+			NetSendCmdParam3(TRUE, CMD_TSPELLPID, pcursplr, plr[myplr]._pTSpell, GetSpellLevel(myplr, plr[myplr]._pTSpell));
+		} else {
+			NetSendCmdLocParam2(TRUE, CMD_TSPELLXY, cursmx, cursmy, plr[myplr]._pTSpell, GetSpellLevel(myplr, plr[myplr]._pTSpell));
+		}
+		NewCursor(CURSOR_HAND);
+		return TRUE;
+	} else if (pcurs == CURSOR_DISARM && pcursobj == -1) {
+		NewCursor(CURSOR_HAND);
+		return TRUE;
 	}
-	if (pcurs == CURSOR_DISARM && pcursobj == -1)
-		goto LABEL_26;
-	return 0;
-}
-// 4B8CB8: using guessed type char pcursinvitem;
-// 4B8CC1: using guessed type char pcursobj;
-// 4B8CC2: using guessed type char pcursplr;
 
-void __cdecl LeftMouseUp()
+	return FALSE;
+}
+
+void LeftMouseUp()
 {
-	gmenu_left_mouse(0);
+	gmenu_left_mouse(FALSE);
 	control_release_talk_btn();
 	if (panbtndown)
 		CheckBtnUp();
@@ -961,655 +870,631 @@ void __cdecl LeftMouseUp()
 		ReleaseChrBtns();
 	if (lvlbtndown)
 		ReleaseLvlBtn();
-	if (stextflag)
+	if (stextflag != STORE_NONE)
 		ReleaseStoreBtn();
 }
-// 4B851C: using guessed type int lvlbtndown;
-// 4B8C90: using guessed type int panbtndown;
-// 6AA705: using guessed type char stextflag;
 
-void __cdecl RightMouseDown()
+void RightMouseDown()
 {
-	if (!gmenu_exception() && sgnTimeoutCurs == CURSOR_NONE && PauseMode != 2 && !plr[myplr]._pInvincible) {
+	if (!gmenu_is_active() && sgnTimeoutCurs == CURSOR_NONE && PauseMode != 2 && !plr[myplr]._pInvincible) {
 		if (doomflag) {
 			doom_close();
-		} else if (!stextflag) {
+		} else if (stextflag == STORE_NONE) {
 			if (spselflag) {
 				SetSpell();
-			} else if (MouseY >= 352
-			    || (!sbookflag || MouseX <= 320)
+#ifdef HELLFIRE
+			} else if ((!sbookflag || MouseX <= RIGHT_PANEL) && (MouseY >= SPANEL_HEIGHT || (!TryIconCurs() && (pcursinvitem == -1 || !UseInvItem(myplr, pcursinvitem))))) {
+#else
+			} else if (MouseY >= SPANEL_HEIGHT
+			    || (!sbookflag || MouseX <= RIGHT_PANEL)
 			        && !TryIconCurs()
 			        && (pcursinvitem == -1 || !UseInvItem(myplr, pcursinvitem))) {
-				if (pcurs == 1) {
+#endif
+				if (pcurs == CURSOR_HAND) {
 					if (pcursinvitem == -1 || !UseInvItem(myplr, pcursinvitem))
 						CheckPlrSpell();
-				} else if (pcurs > 1 && pcurs < 12) {
-					SetCursor_(CURSOR_HAND);
+				} else if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
+					NewCursor(CURSOR_HAND);
 				}
 			}
 		}
 	}
 }
-// 4B8968: using guessed type int sbookflag;
-// 4B8C98: using guessed type int spselflag;
-// 4B8CB8: using guessed type char pcursinvitem;
-// 525740: using guessed type int PauseMode;
-// 52575C: using guessed type int doomflag;
-// 6AA705: using guessed type char stextflag;
 
-BOOL __fastcall PressSysKey(int wParam)
+BOOL PressSysKey(int wParam)
 {
-	if (gmenu_exception() || wParam != VK_F10)
+	if (gmenu_is_active() || wParam != DVL_VK_F10)
 		return FALSE;
 	diablo_hotkey_msg(1);
 	return TRUE;
 }
 
-void __fastcall diablo_hotkey_msg(int dwMsg)
+void diablo_hotkey_msg(DWORD dwMsg)
 {
-	int v1;                  // esi
-	char *v2;                // eax
-	char Filename[260];      // [esp+4h] [ebp-154h]
-	char ReturnedString[80]; // [esp+108h] [ebp-50h]
+	char szMsg[MAX_SEND_STR_LEN];
 
-	v1 = dwMsg;
-	if (gbMaxPlayers != 1) {
-		if (!GetModuleFileName(ghInst, Filename, 0x104u))
-			app_fatal("Can't get program name");
-		v2 = strrchr(Filename, '\\');
-		if (v2)
-			*v2 = 0;
-		strcat(Filename, "\\Diablo.ini");
-		GetPrivateProfileString("NetMsg", spszMsgKeyTbl[v1], spszMsgTbl[v1], ReturnedString, 0x50u, Filename);
-		NetSendCmdString(-1, ReturnedString);
+	if (gbMaxPlayers == 1) {
+		return;
 	}
-}
-// 48436C: using guessed type char *spszMsgTbl[4];
-// 48437C: using guessed type char *spszMsgKeyTbl[4];
-// 679660: using guessed type char gbMaxPlayers;
 
-void __fastcall ReleaseKey(int vkey)
+	assert(dwMsg < sizeof(spszMsgTbl) / sizeof(spszMsgTbl[0]));
+	if (!getIniValue("NetMsg", spszMsgHotKeyTbl[dwMsg], szMsg, MAX_SEND_STR_LEN)) {
+		snprintf(szMsg, MAX_SEND_STR_LEN, "%s", spszMsgTbl[dwMsg]);
+		setIniValue("NetMsg", spszMsgHotKeyTbl[dwMsg], szMsg);
+	}
+
+	NetSendCmdString(-1, szMsg);
+}
+
+void ReleaseKey(int vkey)
 {
-	if (vkey == VK_SNAPSHOT)
+	if (vkey == DVL_VK_SNAPSHOT)
 		CaptureScreen();
-
-	if (vkey == 0x12)
-		drawitems = false;
 }
 
-void __fastcall PressKey(int vkey)
+void PressKey(int vkey)
 {
-	int v1;        // esi
-	int v2;        // ecx
-	int v3;        // ecx
-	signed int v4; // eax
+	if (gmenu_presskeys(vkey) || control_presskeys(vkey)) {
+		return;
+	}
 
-	v1 = vkey;
-	if (!gmenu_presskeys(vkey) && !control_presskeys(v1)) {
-		if (!deathflag)
-			goto LABEL_113;
-		if (sgnTimeoutCurs == CURSOR_NONE) {
-			if (v1 == VK_F9)
-				diablo_hotkey_msg(0);
-			if (v1 == VK_F10)
-				diablo_hotkey_msg(1);
-			if (v1 == VK_F11)
-				diablo_hotkey_msg(2);
-			if (v1 == VK_F12)
-				diablo_hotkey_msg(3);
-			if (v1 == VK_RETURN)
+	if (deathflag) {
+		if (sgnTimeoutCurs != CURSOR_NONE) {
+			return;
+		}
+		if (vkey == DVL_VK_F9) {
+			diablo_hotkey_msg(0);
+		}
+		if (vkey == DVL_VK_F10) {
+			diablo_hotkey_msg(1);
+		}
+		if (vkey == DVL_VK_F11) {
+			diablo_hotkey_msg(2);
+		}
+		if (vkey == DVL_VK_F12) {
+			diablo_hotkey_msg(3);
+		}
+		if (vkey == DVL_VK_RETURN) {
+			if (GetAsyncKeyState(DVL_VK_MENU) & 0x8000)
+				dx_reinit();
+			else
 				control_type_message();
-			if (v1 == VK_ESCAPE) {
-			LABEL_113:
-				if (v1 == VK_ESCAPE) {
-					if (!PressEscKey()) {
-						track_repeat_walk(0);
-						gamemenu_previous();
-					}
-					return;
-				}
-				if (sgnTimeoutCurs == CURSOR_NONE && !dropGoldFlag) {
-					if (v1 == VK_PAUSE) {
-						diablo_pause_game();
-						return;
-					}
-					if (PauseMode != 2) {
-						switch (v1) {
-						case VK_RETURN:
-							if (stextflag) {
-								STextEnter();
-							} else if (questlog) {
-								QuestlogEnter();
-							} else {
-								control_type_message();
-							}
-							return;
-						case VK_F1:
-							if (helpflag) {
-								helpflag = 0;
-								return;
-							}
-							if (stextflag) {
-								ClearPanel();
-								AddPanelString("No help available", 1);
-								AddPanelString("while in stores", 1);
-								track_repeat_walk(0);
-								return;
-							}
-							invflag = 0;
-							chrflag = 0;
-							sbookflag = 0;
-							spselflag = 0;
-							if (qtextflag && leveltype == DTYPE_TOWN) {
-								qtextflag = FALSE;
-								sfx_stop();
-							}
-							questlog = 0;
-							automapflag = 0;
-							msgdelay = 0;
-							gamemenu_off();
-							DisplayHelp();
-						LABEL_110:
-							doom_close();
-							return;
-#ifdef _DEBUG
-						case VK_F3:
-							if (pcursitem != -1) {
-								sprintf(tempstr, "IDX = %i  :  Seed = %i  :  CF = %i", item[pcursitem].IDidx, item[pcursitem]._iSeed, item[pcursitem]._iCreateInfo);
-								NetSendCmdString(1 << myplr, tempstr);
-							}
-							sprintf(tempstr, "Numitems : %i", numitems);
-							NetSendCmdString(1 << myplr, tempstr);
-							return;
-						case VK_F4:
-							PrintDebugQuest();
-							return;
-#endif
-						case VK_F5:
-							v2 = 0;
-							goto LABEL_48;
-						case VK_F6:
-							v2 = 1;
-							goto LABEL_48;
-						case VK_F7:
-							v2 = 2;
-							goto LABEL_48;
-						case VK_F8:
-							v2 = 3;
-						LABEL_48:
-							if (spselflag)
-								SetSpeedSpell(v2);
-							else
-								ToggleSpell(v2);
-							return;
-						case VK_F9:
-							v3 = 0;
-						LABEL_59:
-							diablo_hotkey_msg(v3);
-							return;
-						case VK_F10:
-							v3 = 1;
-							goto LABEL_59;
-						case VK_F11:
-							v3 = 2;
-							goto LABEL_59;
-						case VK_F12:
-							v3 = 3;
-							goto LABEL_59;
-						case VK_UP:
-							if (stextflag) {
-								STextUp();
-							} else if (questlog) {
-								QuestlogUp();
-							} else if (helpflag) {
-								HelpScrollUp();
-							} else if (automapflag) {
-								AutomapUp();
-							}
-							return;
-						case VK_DOWN:
-							if (stextflag) {
-								STextDown();
-							} else if (questlog) {
-								QuestlogDown();
-							} else if (helpflag) {
-								HelpScrollDown();
-							} else if (automapflag) {
-								AutomapDown();
-							}
-							return;
-						case VK_PRIOR:
-							if (stextflag)
-								STextPrior();
-							return;
-						case 0x12:
-							drawitems = true;
-						return;
-						case VK_NEXT:
-							if (stextflag)
-								STextNext();
-							return;
-						case VK_LEFT:
-							if (automapflag && !talkflag)
-								AutomapLeft();
-							return;
-						case VK_RIGHT:
-							if (automapflag && !talkflag)
-								AutomapRight();
-							return;
-						case VK_TAB:
-							DoAutoMap();
-							return;
-						case VK_SPACE:
-							if (!chrflag) {
-								if (!invflag) {
-								LABEL_106:
-									helpflag = 0;
-									invflag = 0;
-									chrflag = 0;
-									sbookflag = 0;
-									spselflag = 0;
-									if (qtextflag && leveltype == DTYPE_TOWN) {
-										qtextflag = FALSE;
-										sfx_stop();
-									}
-									questlog = 0;
-									automapflag = 0;
-									msgdelay = 0;
-									gamemenu_off();
-									goto LABEL_110;
-								}
-								v4 = MouseX;
-								if (MouseX >= 480 || MouseY >= 352) {
-								LABEL_101:
-									if (!invflag && chrflag && v4 > 160 && MouseY < 352)
-										SetCursorPos(v4 - 160, MouseY);
-									goto LABEL_106;
-								}
-								SetCursorPos(MouseX + 160, MouseY);
-							}
-							v4 = MouseX;
-							goto LABEL_101;
-						}
-					}
-				}
-			}
+		}
+		if (vkey != DVL_VK_ESCAPE) {
+			return;
 		}
 	}
-}
-// 4B84DC: using guessed type int dropGoldFlag;
-// 4B8960: using guessed type int talkflag;
-// 4B8968: using guessed type int sbookflag;
-// 4B8C98: using guessed type int spselflag;
-// 525740: using guessed type int PauseMode;
-// 52B9F0: using guessed type char msgdelay;
-// 646D00: using guessed type char qtextflag;
-// 69BD04: using guessed type int questlog;
-// 6AA705: using guessed type char stextflag;
+	if (vkey == DVL_VK_ESCAPE) {
+		if (!PressEscKey()) {
+			track_repeat_walk(FALSE);
+			gamemenu_on();
+		}
+		return;
+	}
 
-void __cdecl diablo_pause_game()
+	if (sgnTimeoutCurs != CURSOR_NONE || dropGoldFlag) {
+		return;
+	}
+	if (vkey == DVL_VK_PAUSE) {
+		diablo_pause_game();
+		return;
+	}
+	if (PauseMode == 2) {
+		if ((vkey == DVL_VK_RETURN) && (GetAsyncKeyState(DVL_VK_MENU) & 0x8000))
+			dx_reinit();
+		return;
+	}
+
+	if (vkey == DVL_VK_RETURN) {
+		if (GetAsyncKeyState(DVL_VK_MENU) & 0x8000) {
+			dx_reinit();
+		} else if (stextflag) {
+			STextEnter();
+		} else if (questlog) {
+			QuestlogEnter();
+		} else {
+			control_type_message();
+		}
+	} else if (vkey == DVL_VK_F1) {
+		if (helpflag) {
+			helpflag = FALSE;
+		} else if (stextflag != STORE_NONE) {
+			ClearPanel();
+			AddPanelString("No help available", TRUE); /// BUGFIX: message isn't displayed
+			AddPanelString("while in stores", TRUE);
+			track_repeat_walk(FALSE);
+		} else {
+			invflag = FALSE;
+			chrflag = FALSE;
+			sbookflag = FALSE;
+			spselflag = FALSE;
+			if (qtextflag && leveltype == DTYPE_TOWN) {
+				qtextflag = FALSE;
+				stream_stop();
+			}
+			questlog = FALSE;
+			automapflag = FALSE;
+			msgdelay = 0;
+			gamemenu_off();
+			DisplayHelp();
+			doom_close();
+		}
+	}
+#ifdef _DEBUG
+	else if (vkey == DVL_VK_F2) {
+	}
+#endif
+#ifdef _DEBUG
+	else if (vkey == DVL_VK_F3) {
+		if (pcursitem != -1) {
+			sprintf(
+			    tempstr,
+			    "IDX = %i  :  Seed = %i  :  CF = %i",
+			    item[pcursitem].IDidx,
+			    item[pcursitem]._iSeed,
+			    item[pcursitem]._iCreateInfo);
+			NetSendCmdString(1 << myplr, tempstr);
+		}
+		sprintf(tempstr, "Numitems : %i", numitems);
+		NetSendCmdString(1 << myplr, tempstr);
+	}
+#endif
+#ifdef _DEBUG
+	else if (vkey == DVL_VK_F4) {
+		PrintDebugQuest();
+	}
+#endif
+	else if (vkey == DVL_VK_F5) {
+		if (spselflag) {
+			SetSpeedSpell(0);
+			return;
+		}
+		ToggleSpell(0);
+		return;
+	} else if (vkey == DVL_VK_F6) {
+		if (spselflag) {
+			SetSpeedSpell(1);
+			return;
+		}
+		ToggleSpell(1);
+		return;
+	} else if (vkey == DVL_VK_F7) {
+		if (spselflag) {
+			SetSpeedSpell(2);
+			return;
+		}
+		ToggleSpell(2);
+		return;
+	} else if (vkey == DVL_VK_F8) {
+		if (spselflag) {
+			SetSpeedSpell(3);
+			return;
+		}
+		ToggleSpell(3);
+		return;
+	} else if (vkey == DVL_VK_F9) {
+		diablo_hotkey_msg(0);
+	} else if (vkey == DVL_VK_F10) {
+		diablo_hotkey_msg(1);
+	} else if (vkey == DVL_VK_F11) {
+		diablo_hotkey_msg(2);
+	} else if (vkey == DVL_VK_F12) {
+		diablo_hotkey_msg(3);
+	} else if (vkey == DVL_VK_UP) {
+		if (stextflag) {
+			STextUp();
+		} else if (questlog) {
+			QuestlogUp();
+		} else if (helpflag) {
+			HelpScrollUp();
+		} else if (automapflag) {
+			AutomapUp();
+		}
+	} else if (vkey == DVL_VK_DOWN) {
+		if (stextflag) {
+			STextDown();
+		} else if (questlog) {
+			QuestlogDown();
+		} else if (helpflag) {
+			HelpScrollDown();
+		} else if (automapflag) {
+			AutomapDown();
+		}
+	} else if (vkey == DVL_VK_PRIOR) {
+		if (stextflag) {
+			STextPrior();
+		}
+	} else if (vkey == DVL_VK_NEXT) {
+		if (stextflag) {
+			STextNext();
+		}
+	} else if (vkey == DVL_VK_LEFT) {
+		if (automapflag && !talkflag) {
+			AutomapLeft();
+		}
+	} else if (vkey == DVL_VK_RIGHT) {
+		if (automapflag && !talkflag) {
+			AutomapRight();
+		}
+	} else if (vkey == DVL_VK_TAB) {
+		DoAutoMap();
+	} else if (vkey == DVL_VK_SPACE) {
+		if (!chrflag && invflag && MouseX < 480 && MouseY < PANEL_TOP && PANELS_COVER) {
+			SetCursorPos(MouseX + 160, MouseY);
+		}
+		if (!invflag && chrflag && MouseX > 160 && MouseY < PANEL_TOP && PANELS_COVER) {
+			SetCursorPos(MouseX - 160, MouseY);
+		}
+		helpflag = FALSE;
+		invflag = FALSE;
+		chrflag = FALSE;
+		sbookflag = FALSE;
+		spselflag = FALSE;
+		if (qtextflag && leveltype == DTYPE_TOWN) {
+			qtextflag = FALSE;
+			stream_stop();
+		}
+		questlog = FALSE;
+		automapflag = FALSE;
+		msgdelay = 0;
+		gamemenu_off();
+		doom_close();
+	}
+}
+
+void diablo_pause_game()
 {
-	if ((unsigned char)gbMaxPlayers <= 1u) {
+	if (gbMaxPlayers <= 1) {
 		if (PauseMode) {
 			PauseMode = 0;
 		} else {
 			PauseMode = 2;
-			FreeMonsterSnd();
-			track_repeat_walk(0);
+			sound_stop();
+			track_repeat_walk(FALSE);
 		}
-		drawpanflag = 255;
+		force_redraw = 255;
 	}
 }
-// 52571C: using guessed type int drawpanflag;
-// 525740: using guessed type int PauseMode;
-// 679660: using guessed type char gbMaxPlayers;
 
-void __fastcall PressChar(int vkey)
+/**
+ * @internal `return` must be used instead of `break` to be bin exact as C++
+ */
+void PressChar(int vkey)
 {
-	int v1;  // ebx
-	BOOL v4; // ecx
-	int v5;  // ecx
-	int v6;  // eax
-	BOOL v7; // ecx
-	int v9;  // ecx
-	int v10; // eax
-	int v11; // eax
-	int v12; // eax
-	int v13; // eax
-	int v14; // eax
-	int v15; // eax
-	int v16; // eax
-	int v18; // [esp-4h] [ebp-8h]
+	if (gmenu_is_active() || control_talk_last_key(vkey) || sgnTimeoutCurs != CURSOR_NONE || deathflag) {
+		return;
+	}
+	if ((char)vkey == 'p' || (char)vkey == 'P') {
+		diablo_pause_game();
+		return;
+	}
+	if (PauseMode == 2) {
+		return;
+	}
+	if (doomflag) {
+		doom_close();
+		return;
+	}
+	if (dropGoldFlag) {
+		control_drop_gold(vkey);
+		return;
+	}
 
-	v1 = vkey;
-	if (!gmenu_exception() && !control_talk_last_key(v1) && sgnTimeoutCurs == CURSOR_NONE && !deathflag) {
-		if ((_BYTE)v1 == 'p' || (_BYTE)v1 == 'P') {
-			diablo_pause_game();
-		} else if (PauseMode != 2) {
-			if (doomflag) {
-				doom_close();
-				return;
-			}
-			if (dropGoldFlag) {
-				control_drop_gold(v1);
-				return;
-			}
-			switch (v1) {
-			case '!':
-			case '1':
-				v9 = myplr;
-				v10 = plr[myplr].SpdList[0]._itype;
-				if (v10 != -1 && v10 != 11) {
-					v18 = 47;
-					goto LABEL_72;
+	switch (vkey) {
+	case 'G':
+	case 'g':
+		DecreaseGamma();
+		return;
+	case 'F':
+	case 'f':
+		IncreaseGamma();
+		return;
+	case 'I':
+	case 'i':
+		if (stextflag == STORE_NONE) {
+			sbookflag = FALSE;
+			invflag = !invflag;
+			if (!invflag || chrflag) {
+				if (MouseX < 480 && MouseY < PANEL_TOP && PANELS_COVER) {
+					SetCursorPos(MouseX + 160, MouseY);
 				}
-				return;
-			case '#':
-			case '3':
-				v9 = myplr;
-				v12 = plr[myplr].SpdList[2]._itype;
-				if (v12 != -1 && v12 != 11) {
-					v18 = 49;
-					goto LABEL_72;
+			} else {
+				if (MouseX > 160 && MouseY < PANEL_TOP && PANELS_COVER) {
+					SetCursorPos(MouseX - 160, MouseY);
 				}
-				return;
-			case '$':
-			case '4':
-				v9 = myplr;
-				v13 = plr[myplr].SpdList[3]._itype;
-				if (v13 != -1 && v13 != 11) {
-					v18 = 50;
-					goto LABEL_72;
-				}
-				return;
-			case '%':
-			case '5':
-				v9 = myplr;
-				v14 = plr[myplr].SpdList[4]._itype;
-				if (v14 != -1 && v14 != 11) {
-					v18 = 51;
-					goto LABEL_72;
-				}
-				return;
-			case '&':
-			case '7':
-				v9 = myplr;
-				v16 = plr[myplr].SpdList[6]._itype;
-				if (v16 != -1 && v16 != 11) {
-					v18 = 53;
-					goto LABEL_72;
-				}
-				return;
-			case '*':
-			case '8':
-#ifdef _DEBUG
-				if (debug_mode_key_inverted_v || debug_mode_key_w) {
-					NetSendCmd(TRUE, CMD_CHEAT_EXPERIENCE);
-					return;
-				}
-#endif
-				v9 = myplr;
-				if (plr[myplr].SpdList[7]._itype != -1
-				    && plr[myplr].SpdList[7]._itype != 11) {
-					v18 = 54;
-					goto LABEL_72;
-				}
-				return;
-			case '+':
-			case '=':
-				if (automapflag)
-					AutomapZoomIn();
-				return;
-			case '-':
-			case '_':
-				if (automapflag)
-					AutomapZoomOut();
-				return;
-			case '2':
-			case '@':
-				v9 = myplr;
-				v11 = plr[myplr].SpdList[1]._itype;
-				if (v11 != -1 && v11 != 11) {
-					v18 = 48;
-					goto LABEL_72;
-				}
-				return;
-			case '6':
-			case '^':
-				v9 = myplr;
-				v15 = plr[myplr].SpdList[5]._itype;
-				if (v15 != -1 && v15 != 11) {
-					v18 = 52;
-				LABEL_72:
-					UseInvItem(v9, v18);
-				}
-				return;
-			case 'B':
-			case 'b':
-				if (!stextflag) {
-					invflag = 0;
-					sbookflag = sbookflag == 0;
-				}
-				return;
-			case 'C':
-			case 'c':
-				if (!stextflag) {
-					questlog = 0;
-					v7 = chrflag == 0;
-					chrflag = chrflag == 0;
-					if (!v7 || invflag)
-						goto LABEL_18;
-					goto LABEL_24;
-				}
-				return;
-			case 'F':
-			case 'f':
-				IncreaseGamma();
-				return;
-			case 'G':
-			case 'g':
-				DecreaseGamma();
-				return;
-			case 'I':
-			case 'i':
-				if (stextflag)
-					return;
-				sbookflag = 0;
-				v4 = invflag == 0;
-				invflag = invflag == 0;
-				if (!v4 || chrflag) {
-				LABEL_24:
-					if (MouseX < 480) {
-						v5 = MouseY;
-						if (MouseY < 352) {
-							v6 = MouseX + 160;
-							goto LABEL_27;
-						}
-					}
-				} else {
-				LABEL_18:
-					if (MouseX > 160) {
-						v5 = MouseY;
-						if (MouseY < 352) {
-							v6 = MouseX - 160;
-						LABEL_27:
-							SetCursorPos(v6, v5);
-							return;
-						}
-					}
-				}
-				break;
-			case 'Q':
-			case 'q':
-				if (!stextflag) {
-					chrflag = 0;
-					if (questlog)
-						questlog = 0;
-					else
-						StartQuestlog();
-				}
-				return;
-			case 'S':
-			case 's':
-				if (!stextflag) {
-					invflag = 0;
-					if (spselflag)
-						spselflag = 0;
-					else
-						DoSpeedBook();
-					track_repeat_walk(0);
-				}
-				return;
-			case 'V':
-				NetSendCmdString(1 << myplr, gszVersionNumber);
-				return;
-			case 'v':
-				NetSendCmdString(1 << myplr, gszProductName);
-				return;
-			case 'Z':
-			case 'z':
-				zoomflag = zoomflag == 0;
-				return;
-#ifdef _DEBUG
-			case ')':
-			case '0':
-				if (debug_mode_key_inverted_v) {
-					if (arrowdebug > 2)
-						arrowdebug = 0;
-					if (!arrowdebug) {
-						plr[myplr]._pIFlags &= ~ISPL_FIRE_ARROWS;
-						plr[myplr]._pIFlags &= ~ISPL_LIGHT_ARROWS;
-					}
-					if (arrowdebug == 1)
-						plr[myplr]._pIFlags |= ISPL_FIRE_ARROWS;
-					if (arrowdebug == 2)
-						plr[myplr]._pIFlags |= ISPL_LIGHT_ARROWS;
-					arrowdebug++;
-				}
-				return;
-			case ':':
-				if (!currlevel && debug_mode_key_w)
-					SetAllSpellsCheat();
-				return;
-			case '[':
-				if (!currlevel && debug_mode_key_w)
-					TakeGoldCheat();
-				return;
-			case ']':
-				if (!currlevel && debug_mode_key_w)
-					MaxSpellsCheat();
-				return;
-			case 'a':
-				if (debug_mode_key_inverted_v) {
-					spelldata[SPL_TELEPORT].sTownSpell = TRUE;
-					plr[myplr]._pSplLvl[plr[myplr]._pSpell]++;
-				}
-				return;
-			case 'D':
-				PrintDebugPlayer(1);
-				return;
-			case 'd':
-				PrintDebugPlayer(0);
-				return;
-			case 'e':
-				if (debug_mode_key_d) {
-					sprintf(tempstr, "EFlag = %i", plr[myplr]._peflag);
-					NetSendCmdString(1 << myplr, tempstr);
-				}
-				return;
-			case 'L':
-			case 'l':
-				if (debug_mode_key_inverted_v)
-					ToggleLighting();
-				return;
-			case 'M':
-				NextDebugMonster();
-				return;
-			case 'm':
-				GetDebugMonster();
-				return;
-			case 'R':
-			case 'r':
-				sprintf(tempstr, "seed = %i", glSeedTbl[currlevel]);
-				NetSendCmdString(1 << myplr, tempstr);
-				sprintf(tempstr, "Mid1 = %i : Mid2 = %i : Mid3 = %i", glMid1Seed[currlevel], glMid2Seed[currlevel], glMid3Seed[currlevel]);
-				NetSendCmdString(1 << myplr, tempstr);
-				sprintf(tempstr, "End = %i", glEndSeed[currlevel]);
-				NetSendCmdString(1 << myplr, tempstr);
-				return;
-			case 'T':
-			case 't':
-				if (debug_mode_key_inverted_v) {
-					sprintf(tempstr, "PX = %i  PY = %i", plr[myplr].WorldX, plr[myplr].WorldY);
-					NetSendCmdString(1 << myplr, tempstr);
-					sprintf(tempstr, "CX = %i  CY = %i  DP = %i", cursmx, cursmy, dungeon[cursmx][cursmy]);
-					NetSendCmdString(1 << myplr, tempstr);
-				}
-				return;
-			case '|':
-				if (!currlevel && debug_mode_key_w)
-					GiveGoldCheat();
-				return;
-			case '~':
-				if (!currlevel && debug_mode_key_w)
-					StoresCheat();
-				return;
-#endif
 			}
 		}
+		return;
+	case 'C':
+	case 'c':
+		if (stextflag == STORE_NONE) {
+			questlog = FALSE;
+			chrflag = !chrflag;
+			if (!chrflag || invflag) {
+				if (MouseX > 160 && MouseY < PANEL_TOP && PANELS_COVER) {
+					SetCursorPos(MouseX - 160, MouseY);
+				}
+			} else {
+				if (MouseX < 480 && MouseY < PANEL_TOP && PANELS_COVER) {
+					SetCursorPos(MouseX + 160, MouseY);
+				}
+			}
+		}
+		return;
+	case 'Q':
+	case 'q':
+		if (stextflag == STORE_NONE) {
+			chrflag = FALSE;
+			if (!questlog) {
+				StartQuestlog();
+			} else {
+				questlog = FALSE;
+			}
+		}
+		return;
+	case 'Z':
+	case 'z':
+		zoomflag = !zoomflag;
+		CalcViewportGeometry();
+		return;
+	case 'S':
+	case 's':
+		if (stextflag == STORE_NONE) {
+			invflag = FALSE;
+			if (!spselflag) {
+				DoSpeedBook();
+			} else {
+				spselflag = FALSE;
+			}
+			track_repeat_walk(FALSE);
+		}
+		return;
+	case 'B':
+	case 'b':
+		if (stextflag == STORE_NONE) {
+			invflag = FALSE;
+			sbookflag = !sbookflag;
+		}
+		return;
+	case '+':
+	case '=':
+		if (automapflag) {
+			AutomapZoomIn();
+		}
+		return;
+	case '-':
+	case '_':
+		if (automapflag) {
+			AutomapZoomOut();
+		}
+		return;
+	case 'v':
+		char *difficulties[3];
+		char pszStr[120];
+		difficulties[0] = "Normal";
+		difficulties[1] = "Nightmare";
+		difficulties[2] = "Hell";
+		sprintf(pszStr, "%s, mode = %s", gszProductName, difficulties[gnDifficulty]);
+		NetSendCmdString(1 << myplr, pszStr);
+		return;
+	case 'V':
+		NetSendCmdString(1 << myplr, gszVersionNumber);
+		return;
+	case '!':
+	case '1':
+		if (plr[myplr].SpdList[0]._itype != ITYPE_NONE && plr[myplr].SpdList[0]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST);
+		}
+		return;
+	case '@':
+	case '2':
+		if (plr[myplr].SpdList[1]._itype != ITYPE_NONE && plr[myplr].SpdList[1]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 1);
+		}
+		return;
+	case '#':
+	case '3':
+		if (plr[myplr].SpdList[2]._itype != ITYPE_NONE && plr[myplr].SpdList[2]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 2);
+		}
+		return;
+	case '$':
+	case '4':
+		if (plr[myplr].SpdList[3]._itype != ITYPE_NONE && plr[myplr].SpdList[3]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 3);
+		}
+		return;
+	case '%':
+	case '5':
+		if (plr[myplr].SpdList[4]._itype != ITYPE_NONE && plr[myplr].SpdList[4]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 4);
+		}
+		return;
+	case '^':
+	case '6':
+		if (plr[myplr].SpdList[5]._itype != ITYPE_NONE && plr[myplr].SpdList[5]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 5);
+		}
+		return;
+	case '&':
+	case '7':
+		if (plr[myplr].SpdList[6]._itype != ITYPE_NONE && plr[myplr].SpdList[6]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 6);
+		}
+		return;
+	case '*':
+	case '8':
+#ifdef _DEBUG
+		if (debug_mode_key_inverted_v || debug_mode_key_w) {
+			NetSendCmd(TRUE, CMD_CHEAT_EXPERIENCE);
+			return;
+		}
+#endif
+		if (plr[myplr].SpdList[7]._itype != ITYPE_NONE && plr[myplr].SpdList[7]._itype != ITYPE_GOLD) {
+			UseInvItem(myplr, INVITEM_BELT_FIRST + 7);
+		}
+		return;
+#ifdef _DEBUG
+	case ')':
+	case '0':
+		if (debug_mode_key_inverted_v) {
+			if (arrowdebug > 2) {
+				arrowdebug = 0;
+			}
+			if (arrowdebug == 0) {
+				plr[myplr]._pIFlags &= ~ISPL_FIRE_ARROWS;
+				plr[myplr]._pIFlags &= ~ISPL_LIGHT_ARROWS;
+			}
+			if (arrowdebug == 1) {
+				plr[myplr]._pIFlags |= ISPL_FIRE_ARROWS;
+			}
+			if (arrowdebug == 2) {
+				plr[myplr]._pIFlags |= ISPL_LIGHT_ARROWS;
+			}
+			arrowdebug++;
+		}
+		return;
+	case ':':
+		if (currlevel == 0 && debug_mode_key_w) {
+			SetAllSpellsCheat();
+		}
+		return;
+	case '[':
+		if (currlevel == 0 && debug_mode_key_w) {
+			TakeGoldCheat();
+		}
+		return;
+	case ']':
+		if (currlevel == 0 && debug_mode_key_w) {
+			MaxSpellsCheat();
+		}
+		return;
+	case 'a':
+		if (debug_mode_key_inverted_v) {
+			spelldata[SPL_TELEPORT].sTownSpell = 1;
+			plr[myplr]._pSplLvl[plr[myplr]._pSpell]++;
+		}
+		return;
+	case 'D':
+		PrintDebugPlayer(TRUE);
+		return;
+	case 'd':
+		PrintDebugPlayer(FALSE);
+		return;
+	case 'L':
+	case 'l':
+		if (debug_mode_key_inverted_v) {
+			ToggleLighting();
+		}
+		return;
+	case 'M':
+		NextDebugMonster();
+		return;
+	case 'm':
+		GetDebugMonster();
+		return;
+	case 'R':
+	case 'r':
+		sprintf(tempstr, "seed = %i", glSeedTbl[currlevel]);
+		NetSendCmdString(1 << myplr, tempstr);
+		sprintf(tempstr, "Mid1 = %i : Mid2 = %i : Mid3 = %i", glMid1Seed[currlevel], glMid2Seed[currlevel], glMid3Seed[currlevel]);
+		NetSendCmdString(1 << myplr, tempstr);
+		sprintf(tempstr, "End = %i", glEndSeed[currlevel]);
+		NetSendCmdString(1 << myplr, tempstr);
+		return;
+	case 'T':
+	case 't':
+		if (debug_mode_key_inverted_v) {
+			sprintf(tempstr, "PX = %i  PY = %i", plr[myplr]._px, plr[myplr]._py);
+			NetSendCmdString(1 << myplr, tempstr);
+			sprintf(tempstr, "CX = %i  CY = %i  DP = %i", cursmx, cursmy, dungeon[cursmx][cursmy]);
+			NetSendCmdString(1 << myplr, tempstr);
+		}
+		return;
+	case '|':
+		if (currlevel == 0 && debug_mode_key_w) {
+			GiveGoldCheat();
+		}
+		return;
+	case '~':
+		if (currlevel == 0 && debug_mode_key_w) {
+			StoresCheat();
+		}
+		return;
+#endif
 	}
 }
-// 4B84DC: using guessed type int dropGoldFlag;
-// 4B8968: using guessed type int sbookflag;
-// 4B8C98: using guessed type int spselflag;
-// 52569C: using guessed type int zoomflag;
-// 525740: using guessed type int PauseMode;
-// 52575C: using guessed type int doomflag;
-// 69BD04: using guessed type int questlog;
-// 6AA705: using guessed type char stextflag;
 
-void __cdecl LoadLvlGFX()
+void LoadLvlGFX()
 {
+	assert(! pDungeonCels);
+
 	switch (leveltype) {
 	case DTYPE_TOWN:
-		pDungeonCels = LoadFileInMem("Levels\\TownData\\Town.CEL", 0);
-		pMegaTiles = LoadFileInMem("Levels\\TownData\\Town.TIL", 0);
-		pLevelPieces = LoadFileInMem("Levels\\TownData\\Town.MIN", 0);
-		level_special_cel = LoadFileInMem("Levels\\TownData\\TownS.CEL", 0);
+#ifdef HELLFIRE
+		pDungeonCels = LoadFileInMem("NLevels\\TownData\\Town.CEL", NULL);
+		pMegaTiles = LoadFileInMem("NLevels\\TownData\\Town.TIL", NULL);
+		pLevelPieces = LoadFileInMem("NLevels\\TownData\\Town.MIN", NULL);
+#else
+		pDungeonCels = LoadFileInMem("Levels\\TownData\\Town.CEL", NULL);
+		pMegaTiles = LoadFileInMem("Levels\\TownData\\Town.TIL", NULL);
+		pLevelPieces = LoadFileInMem("Levels\\TownData\\Town.MIN", NULL);
+#endif
+		pSpecialCels = LoadFileInMem("Levels\\TownData\\TownS.CEL", NULL);
 		break;
 	case DTYPE_CATHEDRAL:
-		pDungeonCels = LoadFileInMem("Levels\\L1Data\\L1.CEL", 0);
-		pMegaTiles = LoadFileInMem("Levels\\L1Data\\L1.TIL", 0);
-		pLevelPieces = LoadFileInMem("Levels\\L1Data\\L1.MIN", 0);
-		level_special_cel = LoadFileInMem("Levels\\L1Data\\L1S.CEL", 0);
+#ifdef HELLFIRE
+		if (currlevel < 21) {
+#endif
+			pDungeonCels = LoadFileInMem("Levels\\L1Data\\L1.CEL", NULL);
+			pMegaTiles = LoadFileInMem("Levels\\L1Data\\L1.TIL", NULL);
+			pLevelPieces = LoadFileInMem("Levels\\L1Data\\L1.MIN", NULL);
+			pSpecialCels = LoadFileInMem("Levels\\L1Data\\L1S.CEL", NULL);
+#ifdef HELLFIRE
+		} else {
+			pDungeonCels = LoadFileInMem("NLevels\\L5Data\\L5.CEL", NULL);
+			pMegaTiles = LoadFileInMem("NLevels\\L5Data\\L5.TIL", NULL);
+			pLevelPieces = LoadFileInMem("NLevels\\L5Data\\L5.MIN", NULL);
+			pSpecialCels = LoadFileInMem("NLevels\\L5Data\\L5S.CEL", NULL);
+		}
+#endif
 		break;
 	case DTYPE_CATACOMBS:
-		pDungeonCels = LoadFileInMem("Levels\\L2Data\\L2.CEL", 0);
-		pMegaTiles = LoadFileInMem("Levels\\L2Data\\L2.TIL", 0);
-		pLevelPieces = LoadFileInMem("Levels\\L2Data\\L2.MIN", 0);
-		level_special_cel = LoadFileInMem("Levels\\L2Data\\L2S.CEL", 0);
+		pDungeonCels = LoadFileInMem("Levels\\L2Data\\L2.CEL", NULL);
+		pMegaTiles = LoadFileInMem("Levels\\L2Data\\L2.TIL", NULL);
+		pLevelPieces = LoadFileInMem("Levels\\L2Data\\L2.MIN", NULL);
+		pSpecialCels = LoadFileInMem("Levels\\L2Data\\L2S.CEL", NULL);
 		break;
 	case DTYPE_CAVES:
-		pDungeonCels = LoadFileInMem("Levels\\L3Data\\L3.CEL", 0);
-		pMegaTiles = LoadFileInMem("Levels\\L3Data\\L3.TIL", 0);
-		pLevelPieces = LoadFileInMem("Levels\\L3Data\\L3.MIN", 0);
-		level_special_cel = LoadFileInMem("Levels\\L1Data\\L1S.CEL", 0);
+#ifdef HELLFIRE
+		if (currlevel < 17) {
+#endif
+			pDungeonCels = LoadFileInMem("Levels\\L3Data\\L3.CEL", NULL);
+			pMegaTiles = LoadFileInMem("Levels\\L3Data\\L3.TIL", NULL);
+			pLevelPieces = LoadFileInMem("Levels\\L3Data\\L3.MIN", NULL);
+#ifdef HELLFIRE
+		} else {
+			pDungeonCels = LoadFileInMem("NLevels\\L6Data\\L6.CEL", NULL);
+			pMegaTiles = LoadFileInMem("NLevels\\L6Data\\L6.TIL", NULL);
+			pLevelPieces = LoadFileInMem("NLevels\\L6Data\\L6.MIN", NULL);
+		}
+#endif
+		pSpecialCels = LoadFileInMem("Levels\\L1Data\\L1S.CEL", NULL);
 		break;
 	case DTYPE_HELL:
-		pDungeonCels = LoadFileInMem("Levels\\L4Data\\L4.CEL", 0);
-		pMegaTiles = LoadFileInMem("Levels\\L4Data\\L4.TIL", 0);
-		pLevelPieces = LoadFileInMem("Levels\\L4Data\\L4.MIN", 0);
-		level_special_cel = LoadFileInMem("Levels\\L2Data\\L2S.CEL", 0);
+		pDungeonCels = LoadFileInMem("Levels\\L4Data\\L4.CEL", NULL);
+		pMegaTiles = LoadFileInMem("Levels\\L4Data\\L4.TIL", NULL);
+		pLevelPieces = LoadFileInMem("Levels\\L4Data\\L4.MIN", NULL);
+		pSpecialCels = LoadFileInMem("Levels\\L2Data\\L2S.CEL", NULL);
 		break;
 	default:
 		app_fatal("LoadLvlGFX");
-		return;
+		break;
 	}
 }
 
-void __cdecl LoadAllGFX()
+void LoadAllGFX()
 {
-	pSpeedCels = DiabloAllocPtr(0x100000);
 	IncProgress();
 	IncProgress();
 	InitObjectGFX();
@@ -1618,49 +1503,64 @@ void __cdecl LoadAllGFX()
 	IncProgress();
 }
 
-void __fastcall CreateLevel(int lvldir)
+/**
+ * @param lvldir method of entry
+ */
+void CreateLevel(int lvldir)
 {
-	int hnd; // cl
-
 	switch (leveltype) {
 	case DTYPE_TOWN:
 		CreateTown(lvldir);
 		InitTownTriggers();
-		hnd = 0;
+		LoadRndLvlPal(0);
 		break;
 	case DTYPE_CATHEDRAL:
 		CreateL5Dungeon(glSeedTbl[currlevel], lvldir);
 		InitL1Triggers();
 		Freeupstairs();
-		hnd = 1;
+#ifdef HELLFIRE
+		if(currlevel < 21) {
+			LoadRndLvlPal(1);
+		} else {
+			LoadRndLvlPal(5);
+		}
+#else
+		LoadRndLvlPal(1);
+#endif
 		break;
 	case DTYPE_CATACOMBS:
 		CreateL2Dungeon(glSeedTbl[currlevel], lvldir);
 		InitL2Triggers();
 		Freeupstairs();
-		hnd = 2;
+		LoadRndLvlPal(2);
 		break;
 	case DTYPE_CAVES:
 		CreateL3Dungeon(glSeedTbl[currlevel], lvldir);
 		InitL3Triggers();
 		Freeupstairs();
-		hnd = 3;
+#ifdef HELLFIRE
+		if(currlevel < 17) {
+			LoadRndLvlPal(3);
+		} else {
+			LoadRndLvlPal(6);
+		}
+#else
+		LoadRndLvlPal(3);
+#endif
 		break;
 	case DTYPE_HELL:
 		CreateL4Dungeon(glSeedTbl[currlevel], lvldir);
 		InitL4Triggers();
 		Freeupstairs();
-		hnd = 4;
+		LoadRndLvlPal(4);
 		break;
 	default:
 		app_fatal("CreateLevel");
-		return;
+		break;
 	}
-
-	LoadRndLvlPal(hnd);
 }
 
-void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
+void LoadGameLevel(BOOL firstflag, int lvldir)
 {
 	int i, j;
 	BOOL visited;
@@ -1669,7 +1569,7 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 		glSeedTbl[currlevel] = setseed;
 
 	music_stop();
-	SetCursor_(CURSOR_HAND);
+	NewCursor(CURSOR_HAND);
 	SetRndSeed(glSeedTbl[currlevel]);
 	IncProgress();
 	MakeLightTable();
@@ -1716,7 +1616,11 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 			InitThemes();
 			LoadAllGFX();
 		} else {
+			IncProgress();
+			IncProgress();
 			InitMissileGFX();
+			IncProgress();
+			IncProgress();
 		}
 
 		IncProgress();
@@ -1754,9 +1658,14 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 				glMid1Seed[currlevel] = GetRndSeed();
 				InitMonsters();
 				glMid2Seed[currlevel] = GetRndSeed();
+				IncProgress();
 				InitObjects();
 				InitItems();
-				CreateThemeRooms();
+#ifdef HELLFIRE
+				if ( currlevel < 17 )
+#endif
+					CreateThemeRooms();
+				IncProgress();
 				glMid3Seed[currlevel] = GetRndSeed();
 				InitMissiles();
 				InitDead();
@@ -1778,7 +1687,7 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 		} else {
 			for (i = 0; i < MAXDUNX; i++) {
 				for (j = 0; j < MAXDUNY; j++)
-					dFlags[i][j] |= DFLAG_LIT;
+					dFlags[i][j] |= BFLAG_LIT;
 			}
 
 			InitTowners();
@@ -1798,19 +1707,22 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 		else
 			ResyncMPQuests();
 	} else {
-		/// ASSERT: assert(! pSpeedCels);
-		pSpeedCels = DiabloAllocPtr(0x100000);
 		LoadSetMap();
 		IncProgress();
 		GetLevelMTypes();
+		IncProgress();
 		InitMonsters();
+		IncProgress();
 		InitMissileGFX();
+		IncProgress();
 		InitDead();
+		IncProgress();
 		FillSolidBlockTbls();
 		IncProgress();
 
 		if (lvldir == 5)
 			GetPortalLvlPos();
+		IncProgress();
 
 		for (i = 0; i < MAX_PLRS; i++) {
 			if (plr[i].plractive && currlevel == plr[i].plrlevel) {
@@ -1819,6 +1731,7 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 					InitPlayer(i, firstflag);
 			}
 		}
+		IncProgress();
 
 		InitMultiView();
 		IncProgress();
@@ -1840,17 +1753,16 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 		if (plr[i].plractive && plr[i].plrlevel == currlevel && (!plr[i]._pLvlChanging || i == myplr)) {
 			if (plr[i]._pHitPoints > 0) {
 				if (gbMaxPlayers == 1)
-					dPlayer[plr[i].WorldX][plr[i].WorldY] = i + 1;
+					dPlayer[plr[i]._px][plr[i]._py] = i + 1;
 				else
 					SyncInitPlrPos(i);
 			} else {
-				dFlags[plr[i].WorldX][plr[i].WorldY] |= DFLAG_DEAD_PLAYER;
+				dFlags[plr[i]._px][plr[i]._py] |= BFLAG_DEAD_PLAYER;
 			}
 		}
 	}
 
-	if (leveltype != DTYPE_TOWN)
-		SetDungeonMicros();
+	SetDungeonMicros();
 
 	InitLightMax();
 	IncProgress();
@@ -1858,26 +1770,44 @@ void __fastcall LoadGameLevel(BOOL firstflag, int lvldir)
 
 	if (firstflag) {
 		InitControlPan();
-		IncProgress();
 	}
+	IncProgress();
 	if (leveltype != DTYPE_TOWN) {
 		ProcessLightList();
 		ProcessVisionList();
 	}
 
+#ifdef HELLFIRE
+	if ( currlevel >= 21 )
+	{
+		if ( currlevel == 21 )
+		{
+			items_427ABA(CornerStone.x, CornerStone.y);
+		}
+		if ( quests[Q_NAKRUL]._qactive == QUEST_DONE && currlevel == 24 )
+		{
+			objects_454BA8();
+		}
+	}
+#endif
+
+#ifdef HELLFIRE
+	if ( currlevel >= 17 )
+		music_start(currlevel > 20 ? TMUSIC_L5 : TMUSIC_L6);
+	else
+		music_start(leveltype);
+#else
 	music_start(leveltype);
+#endif
 
 	while (!IncProgress())
 		;
 
-	if (setlevel && setlvlnum == SL_SKELKING && quests[QTYPE_KING]._qactive == 2)
+	if (gbIsSpawn && setlevel && setlvlnum == SL_SKELKING && quests[Q_SKELKING]._qactive == QUEST_ACTIVE)
 		PlaySFX(USFX_SKING1);
 }
-// 525738: using guessed type int setseed;
-// 5CF31D: using guessed type char setlevel;
-// 679660: using guessed type char gbMaxPlayers;
 
-void __fastcall game_loop(BOOL bStartup)
+void game_loop(BOOL bStartup)
 {
 	int i;
 
@@ -1895,94 +1825,84 @@ void __fastcall game_loop(BOOL bStartup)
 			break;
 	}
 }
-// 679660: using guessed type char gbMaxPlayers;
 
-void __cdecl game_logic()
+// Controller support:
+extern void plrctrls_after_game_logic();
+
+void game_logic()
 {
-	if (PauseMode != 2) {
-		if (PauseMode == 1)
-			PauseMode = 2;
-		if (gbMaxPlayers == 1 && gmenu_exception()) {
-			drawpanflag |= 1u;
-		} else {
-			if (!gmenu_exception() && sgnTimeoutCurs == CURSOR_NONE) {
-				CheckCursMove();
-				track_process();
-			}
-			if (gbProcessPlayers)
-				ProcessPlayers();
-			if (leveltype != DTYPE_TOWN) {
-				ProcessMonsters();
-				ProcessObjects();
-				ProcessMissiles();
-				ProcessItems();
-				ProcessLightList();
-				ProcessVisionList();
-			} else {
-				ProcessTowners();
-				ProcessItems();
-				ProcessMissiles();
-			}
-#ifdef _DEBUG
-			if (debug_mode_key_inverted_v) {
-				if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-					ScrollView();
-			}
-#endif
-			sound_update();
-			ClearPlrMsg();
-			CheckTriggers();
-			CheckQuests();
-			drawpanflag |= 1u;
-			pfile_update(0);
-		}
+	if (!ProcessInput()) {
+		return;
 	}
-}
-// 525718: using guessed type char cineflag;
-// 52571C: using guessed type int drawpanflag;
-// 525740: using guessed type int PauseMode;
-// 679660: using guessed type char gbMaxPlayers;
+	if (gbProcessPlayers) {
+		ProcessPlayers();
+	}
+	if (leveltype != DTYPE_TOWN) {
+		ProcessMonsters();
+		ProcessObjects();
+		ProcessMissiles();
+		ProcessItems();
+		ProcessLightList();
+		ProcessVisionList();
+	} else {
+		ProcessTowners();
+		ProcessItems();
+		ProcessMissiles();
+	}
 
-void __fastcall timeout_cursor(BOOL bTimeout)
+#ifdef _DEBUG
+	if (debug_mode_key_inverted_v && GetAsyncKeyState(DVL_VK_SHIFT) & 0x8000) {
+		ScrollView();
+	}
+#endif
+
+	sound_update();
+	ClearPlrMsg();
+	CheckTriggers();
+	CheckQuests();
+	force_redraw |= 1;
+	pfile_update(FALSE);
+
+	plrctrls_after_game_logic();
+}
+
+void timeout_cursor(BOOL bTimeout)
 {
 	if (bTimeout) {
 		if (sgnTimeoutCurs == CURSOR_NONE && !sgbMouseDown) {
 			sgnTimeoutCurs = pcurs;
 			multi_net_ping();
 			ClearPanel();
-			AddPanelString("-- Network timeout --", 1);
-			AddPanelString("-- Waiting for players --", 1);
-			SetCursor_(CURSOR_HOURGLASS);
-			drawpanflag = 255;
+			AddPanelString("-- Network timeout --", TRUE);
+			AddPanelString("-- Waiting for players --", TRUE);
+			NewCursor(CURSOR_HOURGLASS);
+			force_redraw = 255;
 		}
-		scrollrt_draw_game_screen(1);
-	} else if (sgnTimeoutCurs) {
-		SetCursor_(sgnTimeoutCurs);
-		sgnTimeoutCurs = 0;
+		scrollrt_draw_game_screen(TRUE);
+	} else if (sgnTimeoutCurs != CURSOR_NONE) {
+		NewCursor(sgnTimeoutCurs);
+		sgnTimeoutCurs = CURSOR_NONE;
 		ClearPanel();
-		drawpanflag = 255;
+		force_redraw = 255;
 	}
 }
-// 52571C: using guessed type int drawpanflag;
-// 525748: using guessed type char sgbMouseDown;
 
-void __cdecl diablo_color_cyc_logic()
+void diablo_color_cyc_logic()
 {
-	DWORD v0; // eax
+	if (!palette_get_color_cycling())
+		return;
 
-	v0 = GetTickCount();
-	if (v0 - color_cycle_timer >= 0x32) {
-		color_cycle_timer = v0;
-		if (palette_get_colour_cycling()) {
-			if (leveltype == DTYPE_HELL) {
-				lighting_color_cycling();
-			} else if (leveltype == DTYPE_CAVES) {
-				if (fullscreen)
-					palette_update_caves();
-			}
-		}
+	if (leveltype == DTYPE_HELL) {
+		lighting_color_cycling();
+#ifdef HELLFIRE
+		} else if (currlevel >= 21) {
+			palette_update_crypt();
+		} else if (currlevel >= 17) {
+			palette_update_hive();
+#endif
+	} else if (leveltype == DTYPE_CAVES) {
+		palette_update_caves();
 	}
 }
-// 52574C: using guessed type int color_cycle_timer;
 
 DEVILUTION_END_NAMESPACE

@@ -1,83 +1,111 @@
-//HEADER_GOES_HERE
+/**
+ * @file diablo.h
+ *
+ * Interface of the main game initialization functions.
+ */
 #ifndef __DIABLO_H__
 #define __DIABLO_H__
 
-extern HWND ghMainWnd;
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern SDL_Window *ghMainWnd;
+extern DWORD glSeedTbl[NUMLEVELS];
+extern int gnLevelTypeTbl[NUMLEVELS];
+#ifndef HELLFIRE
+extern int glEndSeed[NUMLEVELS];
 extern int glMid1Seed[NUMLEVELS];
 extern int glMid2Seed[NUMLEVELS];
-extern int gnLevelTypeTbl[NUMLEVELS];
-extern int MouseY;             // idb
-extern int MouseX;             // idb
-extern BOOL gbGameLoopStartup; // idb
-extern int glSeedTbl[NUMLEVELS];
-extern BOOL gbRunGame;
 extern int glMid3Seed[NUMLEVELS];
+#else
+extern int glEndSeed[NUMLEVELS + 1];
+extern int glMid1Seed[NUMLEVELS + 1];
+extern int glMid2Seed[NUMLEVELS + 1];
+extern int glMid3Seed[NUMLEVELS + 1];
+#endif
+extern int MouseX;
+extern int MouseY;
+extern BOOL gbGameLoopStartup;
+extern BOOL gbRunGame;
 extern BOOL gbRunGameResult;
-extern int zoomflag; // weak
-extern bool drawitems;
+extern BOOL zoomflag;
 extern BOOL gbProcessPlayers;
-extern int glEndSeed[NUMLEVELS];
 extern BOOL gbLoadGame;
-extern HINSTANCE ghInst; // idb
+extern HINSTANCE ghInst;
 extern int DebugMonsters[10];
-extern char cineflag;   // weak
-extern int drawpanflag; // weak
-extern int visiondebug; // weak
-extern int scrollflag;  /* unused */
+extern BOOLEAN cineflag;
+extern int force_redraw;
+extern BOOL visiondebug;
+/* These are defined in fonts.h */
+extern BOOL was_fonts_init;
+extern void FontsCleanup();
+/** unused */
+extern BOOL scrollflag;
 extern BOOL light4flag;
-extern int leveldebug;        // weak
-extern int monstdebug;        // weak
-extern int trigdebug;         /* unused */
-extern int setseed;           // weak
-extern int debugmonsttypes;   // weak
-extern int PauseMode;         // weak
-extern char sgbMouseDown;     // weak
-extern int color_cycle_timer; // weak
+extern BOOL leveldebug;
+extern BOOL monstdebug;
+/** unused */
+extern BOOL trigdebug;
+extern int setseed;
+extern int debugmonsttypes;
+extern int PauseMode;
+#ifdef HELLFIRE
+extern BOOLEAN UseTheoQuest;
+extern BOOLEAN UseCowFarmer;
+extern BOOLEAN UseNestArt;
+extern BOOLEAN UseBardTest;
+extern BOOLEAN UseBarbarianTest;
+extern BOOLEAN UseMultiTest;
+#endif
+extern char sgbMouseDown;
+extern int color_cycle_timer;
+extern int ticks_per_sec;
+extern WORD tick_delay;
 
-void __cdecl FreeGameMem();
-BOOL __fastcall StartGame(BOOL bNewGame, BOOL bSinglePlayer);
-void __fastcall run_game_loop(unsigned int uMsg);
-void __fastcall start_game(unsigned int uMsg);
-void __cdecl free_game();
-BOOL __cdecl diablo_get_not_running();
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
-void __fastcall diablo_parse_flags(char *args);
-void __cdecl diablo_init_screen();
-BOOL __fastcall diablo_find_window(LPCSTR lpClassName);
-void __fastcall diablo_reload_process(HMODULE hModule);
-BOOL __cdecl PressEscKey();
-LRESULT CALLBACK DisableInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-LRESULT CALLBACK GM_Game(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL __fastcall LeftMouseDown(int wParam);
-BOOL __fastcall LeftMouseCmd(BOOL bShift);
-BOOLEAN __cdecl TryIconCurs();
-void __cdecl LeftMouseUp();
-void __cdecl RightMouseDown();
-void __fastcall j_gmenu_on_mouse_move(LPARAM lParam);
-BOOL __fastcall PressSysKey(int wParam);
-void __fastcall diablo_hotkey_msg(int dwMsg);
-void __fastcall ReleaseKey(int vkey);
-void __fastcall PressKey(int vkey);
-void __cdecl diablo_pause_game();
-void __fastcall PressChar(int vkey);
-void __cdecl LoadLvlGFX();
-void __cdecl LoadAllGFX();
-void __fastcall CreateLevel(int lvldir);
-void __fastcall LoadGameLevel(BOOL firstflag, int lvldir);
-void __fastcall game_loop(BOOL bStartup);
-void __cdecl game_logic();
-void __fastcall timeout_cursor(BOOL bTimeout);
-void __cdecl diablo_color_cyc_logic();
+void FreeGameMem();
+BOOL StartGame(BOOL bNewGame, BOOL bSinglePlayer);
+void run_game_loop(unsigned int uMsg);
+void start_game(unsigned int uMsg);
+void free_game();
+int DiabloMain(int argc, char **argv);
+void diablo_parse_flags(int argc, char **argv);
+void diablo_init_screen();
+void diablo_reload_process(HINSTANCE hInstance);
+void diablo_quit(int exitStatus);
+BOOL PressEscKey();
+LRESULT DisableInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT GM_Game(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+BOOL LeftMouseDown(int wParam);
+BOOL LeftMouseCmd(BOOL bShift);
+BOOL TryIconCurs();
+void LeftMouseUp();
+void RightMouseDown();
+void j_gmenu_on_mouse_move(LPARAM lParam);
+BOOL PressSysKey(int wParam);
+void diablo_hotkey_msg(DWORD dwMsg);
+void ReleaseKey(int vkey);
+void PressKey(int vkey);
+void diablo_pause_game();
+void PressChar(int vkey);
+void LoadLvlGFX();
+void LoadAllGFX();
+void CreateLevel(int lvldir);
+void LoadGameLevel(BOOL firstflag, int lvldir);
+void game_loop(BOOL bStartup);
+void game_logic();
+void timeout_cursor(BOOL bTimeout);
+void diablo_color_cyc_logic();
 
 /* data */
-
-extern int diablo_inf; // weak
 
 /* rdata */
 
 extern BOOL fullscreen;
-#ifdef _DEBUG
 extern int showintrodebug;
+#ifdef _DEBUG
 extern int questdebug;
 extern int debug_mode_key_s;
 extern int debug_mode_key_w;
@@ -89,13 +117,19 @@ extern int dbgplr;
 extern int dbgqst;
 extern int dbgmon;
 extern int arrowdebug;
+#endif
 extern int frameflag;
 extern int frameend;
 extern int framerate;
 extern int framestart;
-#endif
 extern BOOL FriendlyMode;
-extern char *spszMsgTbl[4];    // weak
-extern char *spszMsgKeyTbl[4]; // weak
+extern const char *const spszMsgTbl[4];
+extern const char *const spszMsgHotKeyTbl[4];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __DIABLO_H__ */

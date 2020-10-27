@@ -1,28 +1,25 @@
-//HEADER_GOES_HERE
+/**
+ * @file render.h
+ *
+ * Interface of functionality for rendering the level tiles.
+ */
 #ifndef __RENDER_H__
 #define __RENDER_H__
 
-void __fastcall drawTopArchesUpperScreen(BYTE *pBuff);
-void __fastcall drawBottomArchesUpperScreen(BYTE *pBuff, unsigned int *pMask);
-void __fastcall drawUpperScreen(BYTE *pBuff);
-void __fastcall drawTopArchesLowerScreen(BYTE *pBuff);
-void __fastcall drawBottomArchesLowerScreen(BYTE *pBuff, unsigned int *pMask);
-void __fastcall drawLowerScreen(BYTE *pBuff);
-void __fastcall world_draw_black_tile(BYTE *pBuff);
+DEVILUTION_BEGIN_NAMESPACE
 
-/* rdata */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern int WorldBoolFlag;
-extern unsigned int gdwCurrentMask;
-// extern char world_4B3264;
-extern unsigned char *gpCelFrame;
-extern unsigned int *gpDrawMask;
-// extern char world_4B326D[16];
-extern unsigned int RightMask[32];
-extern unsigned int LeftMask[32];
-extern unsigned int WallMask[32];
-extern int WorldTbl3x16[48];
-extern int WorldTbl17_1[17];
-extern int WorldTbl17_2[17];
+void RenderTile(BYTE *pBuff);
+void world_draw_black_tile(int sx, int sy);
+void trans_rect(int sx, int sy, int width, int height);
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __RENDER_H__ */

@@ -1,63 +1,69 @@
-//HEADER_GOES_HERE
+/**
+ * @file pfile.cpp
+ *
+ * Implementation of the save game encoding functionality.
+ */
+#include <string>
 
-#include "../types.h"
+#include "all.h"
+#include "paths.h"
+#include "../3rdParty/Storm/Source/storm.h"
+#include "../DiabloUI/diabloui.h"
+#include "file_util.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
+#define PASSWORD_SPAWN_SINGLE "adslhfb1"
+#define PASSWORD_SPAWN_MULTI "lshbkfg1"
 #define PASSWORD_SINGLE "xrgyrkj1"
 #define PASSWORD_MULTI "szqnlsk1"
 
+namespace {
+
+std::string GetSavePath(DWORD save_num)
+{
+	std::string path = GetPrefPath();
+#ifdef HELLFIRE
+		const char *ext = ".hsv";
+#else
+		const char *ext = ".sv";
+#endif
+
+	if (gbIsSpawn) {
+		if (gbMaxPlayers <= 1) {
+			path.append("spawn");
+		} else {
+			path.append("share_");
+		}
+	} else {
+		if (gbMaxPlayers <= 1) {
+			path.append("single_");
+		} else {
+#ifdef HELLFIRE
+			path.append("hrinfo_");
+			ext = ".drv";
+#else
+			path.append("multi_");
+#endif
+		}
+	}
+
+	char save_num_str[21];
+	snprintf(save_num_str, sizeof(save_num_str) / sizeof(char), "%d", save_num);
+	path.append(save_num_str);
+	path.append(ext);
+	return path;
+}
+
+} // namespace
+
+/** List of character names for the character selection screen. */
 static char hero_names[MAX_CHARACTERS][PLR_NAME_LEN];
 BOOL gbValidSaveFile;
 
-void __cdecl pfile_init_save_directory()
+void pfile_write_hero()
 {
-	DWORD len;
-	char Buffer[MAX_PATH];
-
-	len = GetWindowsDirectory(Buffer, sizeof(Buffer));
-	if (len) {
-		pfile_check_available_space(Buffer);
-		len = GetModuleFileName(ghInst, Buffer, sizeof(Buffer));
-	}
-
-	if (!len)
-		app_fatal("Unable to initialize save directory");
-	else
-		pfile_check_available_space(Buffer);
-}
-
-void __fastcall pfile_check_available_space(char *pszDir)
-{
-	char *s;
-	BOOL hasSpace;
-	DWORD TotalNumberOfClusters;
-	DWORD NumberOfFreeClusters;
-	DWORD BytesPerSector;
-	DWORD SectorsPerCluster;
-
-	s = pszDir;
-	while (*s) {
-		if (*s++ != '\\')
-			continue;
-		*s = '\0';
-		break;
-	}
-
-	hasSpace = GetDiskFreeSpace(pszDir, &SectorsPerCluster, &BytesPerSector, &NumberOfFreeClusters, &TotalNumberOfClusters);
-	if (hasSpace) {
-		// 10MB is the amount hardcoded in the error dialog
-		if ((__int64)SectorsPerCluster * BytesPerSector * NumberOfFreeClusters < (__int64)(10 << 20))
-			hasSpace = FALSE;
-	}
-
-	if (!hasSpace)
-		DiskFreeDlg(pszDir);
-}
-
-void __cdecl pfile_write_hero()
-{
-	unsigned int save_num;
+	DWORD save_num;
 	PkPlayerStruct pkplr;
 
 	save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
@@ -68,26 +74,33 @@ void __cdecl pfile_write_hero()
 	}
 }
 
-unsigned int __fastcall pfile_get_save_num_from_name(const char *name)
+DWORD pfile_get_save_num_from_name(const char *name)
 {
-	unsigned int i;
+	DWORD i;
 
 	for (i = 0; i < MAX_CHARACTERS; i++) {
-		if (!_strcmpi(hero_names[i], name))
+		if (!strcasecmp(hero_names[i], name))
 			break;
 	}
 
 	return i;
 }
 
-void __fastcall pfile_encode_hero(const PkPlayerStruct *pPack)
+void pfile_encode_hero(const PkPlayerStruct *pPack)
 {
 	BYTE *packed;
 	DWORD packed_len;
-	char password[16] = PASSWORD_SINGLE;
+	const char *password;
 
-	if (gbMaxPlayers > 1)
-		strcpy(password, PASSWORD_MULTI);
+	if (gbIsSpawn) {
+		password = PASSWORD_SPAWN_SINGLE;
+		if (gbMaxPlayers > 1)
+			password = PASSWORD_SPAWN_MULTI;
+	} else {
+		password = PASSWORD_SINGLE;
+		if (gbMaxPlayers > 1)
+			password = PASSWORD_MULTI;
+	}
 
 	packed_len = codec_get_encoded_len(sizeof(*pPack));
 	packed = (BYTE *)DiabloAllocPtr(packed_len);
@@ -97,52 +110,20 @@ void __fastcall pfile_encode_hero(const PkPlayerStruct *pPack)
 	mem_free_dbg(packed);
 }
 
-BOOL __fastcall pfile_open_archive(BOOL a1, unsigned int save_num)
+BOOL pfile_open_archive(BOOL update, DWORD save_num)
 {
-	char FileName[MAX_PATH];
-
-	pfile_get_save_path(FileName, sizeof(FileName), save_num);
-	if (mpqapi_open_archive(FileName, FALSE, save_num))
+	if (OpenMPQ(GetSavePath(save_num).c_str(), save_num))
 		return TRUE;
 
-	if (a1 && gbMaxPlayers > 1)
-		mpqapi_update_multi_creation_time(save_num);
 	return FALSE;
 }
 
-void __fastcall pfile_get_save_path(char *pszBuf, DWORD dwBufSize, unsigned int save_num)
+void pfile_flush(BOOL is_single_player, DWORD save_num)
 {
-	DWORD plen;
-	char *s;
-	char path[MAX_PATH];
-	const char *fmt = "\\multi_%d.sv";
-
-	if (gbMaxPlayers <= 1)
-		fmt = "\\single_%d.sv";
-
-	// BUGFIX: ignores dwBufSize and uses MAX_PATH instead
-	plen = GetModuleFileName(ghInst, pszBuf, MAX_PATH);
-	s = strrchr(pszBuf, '\\');
-	if (s)
-		*s = '\0';
-
-	if (!plen)
-		app_fatal("Unable to get save directory");
-
-	sprintf(path, fmt, save_num);
-	strcat(pszBuf, path);
-	_strlwr(pszBuf);
+	mpqapi_flush_and_close(GetSavePath(save_num).c_str(), is_single_player, save_num);
 }
 
-void __fastcall pfile_flush(BOOL is_single_player, unsigned int save_num)
-{
-	char FileName[MAX_PATH];
-
-	pfile_get_save_path(FileName, sizeof(FileName), save_num);
-	mpqapi_flush_and_close(FileName, is_single_player, save_num);
-}
-
-BOOL __fastcall pfile_create_player_description(char *dst, unsigned int len)
+BOOL pfile_create_player_description(char *dst, DWORD len)
 {
 	char desc[128];
 	_uiheroinfo uihero;
@@ -160,16 +141,16 @@ BOOL __fastcall pfile_create_player_description(char *dst, unsigned int len)
 	return TRUE;
 }
 
-BOOL __fastcall pfile_create_save_file(const char *name_1, const char *name_2)
+BOOL pfile_rename_hero(const char *name_1, const char *name_2)
 {
 	int i;
-	unsigned int save_num;
+	DWORD save_num;
 	_uiheroinfo uihero;
 	BOOL found = FALSE;
 
 	if (pfile_get_save_num_from_name(name_2) == MAX_CHARACTERS) {
 		for (i = 0; i != MAX_PLRS; i++) {
-			if (!_strcmpi(name_1, plr[i]._pName)) {
+			if (!strcasecmp(name_1, plr[i]._pName)) {
 				found = TRUE;
 				break;
 			}
@@ -184,7 +165,7 @@ BOOL __fastcall pfile_create_save_file(const char *name_1, const char *name_2)
 
 	SStrCopy(hero_names[save_num], name_2, PLR_NAME_LEN);
 	SStrCopy(plr[i]._pName, name_2, PLR_NAME_LEN);
-	if (!_strcmpi(gszHero, name_1))
+	if (!strcasecmp(gszHero, name_1))
 		SStrCopy(gszHero, name_2, sizeof(gszHero));
 	game_2_ui_player(plr, &uihero, gbValidSaveFile);
 	UiSetupPlayerInfo(gszHero, &uihero, GAME_ID);
@@ -192,12 +173,12 @@ BOOL __fastcall pfile_create_save_file(const char *name_1, const char *name_2)
 	return TRUE;
 }
 
-void __cdecl pfile_flush_W()
+void pfile_flush_W()
 {
 	pfile_flush(TRUE, pfile_get_save_num_from_name(plr[myplr]._pName));
 }
 
-void __fastcall game_2_ui_player(const PlayerStruct *p, _uiheroinfo *heroinfo, BOOL bHasSaveFile)
+void game_2_ui_player(const PlayerStruct *p, _uiheroinfo *heroinfo, BOOL bHasSaveFile)
 {
 	memset(heroinfo, 0, sizeof(*heroinfo));
 	strncpy(heroinfo->name, p->_pName, sizeof(heroinfo->name) - 1);
@@ -210,66 +191,42 @@ void __fastcall game_2_ui_player(const PlayerStruct *p, _uiheroinfo *heroinfo, B
 	heroinfo->vitality = p->_pVitality;
 	heroinfo->gold = p->_pGold;
 	heroinfo->hassaved = bHasSaveFile;
-	heroinfo->herorank = (unsigned char)p->pDiabloKillLevel;
-	heroinfo->spawned = 0;
+	heroinfo->herorank = p->pDiabloKillLevel;
+	heroinfo->spawned = gbIsSpawn;
 }
 
-unsigned char __fastcall game_2_ui_class(const PlayerStruct *p)
+BYTE game_2_ui_class(const PlayerStruct *p)
 {
-	unsigned char uiclass;
+	BYTE uiclass;
 	if (p->_pClass == PC_WARRIOR)
 		uiclass = UI_WARRIOR;
 	else if (p->_pClass == PC_ROGUE)
 		uiclass = UI_ROGUE;
+#ifdef HELLFIRE
+	else if (p->_pClass == PC_MONK)
+		uiclass = UI_MONK;
+	else if (p->_pClass == PC_BARD)
+		uiclass = UI_BARD;
+	else if (p->_pClass == PC_BARBARIAN)
+		uiclass = UI_BARBARIAN;
+#endif
 	else
 		uiclass = UI_SORCERER;
 
 	return uiclass;
 }
 
-BOOL __stdcall pfile_ui_set_hero_infos(BOOL(__stdcall *ui_add_hero_info)(_uiheroinfo *))
+BOOL pfile_ui_set_hero_infos(BOOL(*ui_add_hero_info)(_uiheroinfo *))
 {
-	unsigned int i, save_num;
-	char FileName[MAX_PATH];
-	char NewFileName[MAX_PATH];
-	int a1;
+	DWORD i;
+	BOOL showFixedMsg;
 
 	memset(hero_names, 0, sizeof(hero_names));
-	if (gbMaxPlayers > 1) {
-		for (i = 0, save_num = 0; i < MAX_CHARACTERS && save_num < MAX_CHARACTERS; i++) {
-			struct _OFSTRUCT ReOpenBuff;
-			const char *s;
 
-			GetSaveDirectory(FileName, sizeof(FileName), i);
-			s = strrchr(FileName, '\\') + 1;
-			if (s == (const char *)1)
-				continue;
-			if (OpenFile(FileName, &ReOpenBuff, OF_EXIST) == HFILE_ERROR)
-				continue;
-			if (!SRegLoadString("Diablo\\Converted", s, 0, NewFileName, sizeof(NewFileName))) {
-				while (save_num < MAX_CHARACTERS) {
-					pfile_get_save_path(NewFileName, sizeof(NewFileName), save_num++);
-					if (OpenFile(NewFileName, &ReOpenBuff, OF_EXIST) == HFILE_ERROR) {
-						if (CopyFile(FileName, NewFileName, TRUE)) {
-							DWORD attrib;
-							SRegSaveString("Diablo\\Converted", s, 0, NewFileName);
-							attrib = GetFileAttributes(NewFileName);
-							if (attrib != INVALID_FILE_ATTRIBUTES) {
-								attrib &= ~(FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
-								SetFileAttributes(NewFileName, attrib);
-							}
-						}
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	a1 = 1;
+	showFixedMsg = TRUE;
 	for (i = 0; i < MAX_CHARACTERS; i++) {
 		PkPlayerStruct pkplr;
-		HANDLE archive = pfile_open_save_archive(&a1, i);
+		HANDLE archive = pfile_open_save_archive(&showFixedMsg, i);
 		if (archive) {
 			if (pfile_read_hero(archive, &pkplr)) {
 				_uiheroinfo uihero;
@@ -285,65 +242,35 @@ BOOL __stdcall pfile_ui_set_hero_infos(BOOL(__stdcall *ui_add_hero_info)(_uihero
 	return TRUE;
 }
 
-char *__fastcall GetSaveDirectory(char *dst, int dst_size, unsigned int save_num)
-{
-	DWORD dirLen;
-	char FileName[MAX_PATH];
-	const char *savename;
-
-	// BUGFIX: ignores dst_size and uses MAX_PATH instead
-	if (gbMaxPlayers > 1) {
-		savename = "\\dlinfo_%d.drv";
-		dirLen = GetWindowsDirectory(dst, MAX_PATH);
-	} else {
-		char *s;
-		savename = "\\single_%d.sv";
-		dirLen = GetModuleFileName(ghInst, dst, MAX_PATH);
-		s = strrchr(dst, '\\');
-		if (s)
-			*s = '\0';
-	}
-
-	if (!dirLen)
-		app_fatal("Unable to get save directory");
-
-	sprintf(FileName, savename, save_num);
-	strcat(dst, FileName);
-	return _strlwr(dst);
-}
-
-BOOL __fastcall pfile_read_hero(HANDLE archive, PkPlayerStruct *pPack)
+BOOL pfile_read_hero(HANDLE archive, PkPlayerStruct *pPack)
 {
 	HANDLE file;
-	BOOL decoded;
-	DWORD dwlen, nSize;
-	unsigned char *buf;
+	DWORD dwlen;
+	BYTE *buf;
 
-	if (!SFileOpenFileEx(archive, "hero", 0, &file))
+	if (!SFileOpenFileEx(archive, "hero", 0, &file)) {
 		return FALSE;
-	else {
+	} else {
 		BOOL ret = FALSE;
-		char password[16] = PASSWORD_SINGLE;
-		nSize = 16;
+		const char *password;
 
-		if (gbMaxPlayers > 1)
-			strcpy(password, PASSWORD_MULTI);
+		if (gbIsSpawn) {
+			password = PASSWORD_SPAWN_SINGLE;
+			if (gbMaxPlayers > 1)
+				password = PASSWORD_SPAWN_MULTI;
+		} else {
+			password = PASSWORD_SINGLE;
+			if (gbMaxPlayers > 1)
+				password = PASSWORD_MULTI;
+		}
 
 		dwlen = SFileGetFileSize(file, NULL);
 		if (dwlen) {
 			DWORD read;
 			buf = DiabloAllocPtr(dwlen);
 			if (SFileReadFile(file, buf, dwlen, &read, NULL)) {
-				decoded = TRUE;
 				read = codec_decode(buf, dwlen, password);
-				if (!read && gbMaxPlayers > 1) {
-					GetComputerName(password, &nSize);
-					if (SFileSetFilePointer(file, 0, NULL, 0) || !SFileReadFile(file, buf, dwlen, &read, NULL))
-						decoded = FALSE;
-					else
-						read = codec_decode(buf, dwlen, password);
-				}
-				if (decoded && read == sizeof(*pPack)) {
+				if (read == sizeof(*pPack)) {
 					memcpy(pPack, buf, sizeof(*pPack));
 					ret = TRUE;
 				}
@@ -356,23 +283,24 @@ BOOL __fastcall pfile_read_hero(HANDLE archive, PkPlayerStruct *pPack)
 	}
 }
 
-HANDLE __fastcall pfile_open_save_archive(int *unused, unsigned int save_num)
+/**
+ * @param showFixedMsg Display a dialog if a save file was corrected (deprecated)
+ */
+HANDLE pfile_open_save_archive(BOOL *showFixedMsg, DWORD save_num)
 {
-	char SrcStr[MAX_PATH];
 	HANDLE archive;
 
-	pfile_get_save_path(SrcStr, sizeof(SrcStr), save_num);
-	if (SFileOpenArchive(SrcStr, 0x7000, 0, &archive))
+	if (SFileOpenArchive(GetSavePath(save_num).c_str(), 0x7000, FS_PC, &archive))
 		return archive;
 	return NULL;
 }
 
-void __fastcall pfile_SFileCloseArchive(HANDLE hsArchive)
+void pfile_SFileCloseArchive(HANDLE hsArchive)
 {
 	SFileCloseArchive(hsArchive);
 }
 
-BOOL __fastcall pfile_archive_contains_game(HANDLE hsArchive, unsigned int save_num)
+BOOL pfile_archive_contains_game(HANDLE hsArchive, DWORD save_num)
 {
 	HANDLE file;
 
@@ -386,7 +314,7 @@ BOOL __fastcall pfile_archive_contains_game(HANDLE hsArchive, unsigned int save_
 	return TRUE;
 }
 
-BOOL __stdcall pfile_ui_set_class_stats(unsigned int player_class_nr, _uidefaultstats *class_stats)
+BOOL pfile_ui_set_class_stats(unsigned int player_class_nr, _uidefaultstats *class_stats)
 {
 	int c;
 
@@ -398,7 +326,7 @@ BOOL __stdcall pfile_ui_set_class_stats(unsigned int player_class_nr, _uidefault
 	return TRUE;
 }
 
-char __fastcall pfile_get_player_class(unsigned int player_class_nr)
+char pfile_get_player_class(unsigned int player_class_nr)
 {
 	char pc_class;
 
@@ -406,14 +334,22 @@ char __fastcall pfile_get_player_class(unsigned int player_class_nr)
 		pc_class = PC_WARRIOR;
 	else if (player_class_nr == UI_ROGUE)
 		pc_class = PC_ROGUE;
+#ifdef HELLFIRE
+	else if (player_class_nr == 3)
+		pc_class = PC_MONK;
+	else if (player_class_nr == 4)
+		pc_class = PC_BARD;
+	else if (player_class_nr == 5)
+		pc_class = PC_BARBARIAN;
+#endif
 	else
 		pc_class = PC_SORCERER;
 	return pc_class;
 }
 
-BOOL __stdcall pfile_ui_save_create(_uiheroinfo *heroinfo)
+BOOL pfile_ui_save_create(_uiheroinfo *heroinfo)
 {
-	unsigned int save_num;
+	DWORD save_num;
 	char cl;
 	PkPlayerStruct pkplr;
 
@@ -442,7 +378,7 @@ BOOL __stdcall pfile_ui_save_create(_uiheroinfo *heroinfo)
 	return TRUE;
 }
 
-BOOL __stdcall pfile_get_file_name(DWORD lvl, char *dst)
+BOOL pfile_get_file_name(DWORD lvl, char *dst)
 {
 	const char *fmt;
 
@@ -467,24 +403,22 @@ BOOL __stdcall pfile_get_file_name(DWORD lvl, char *dst)
 	return TRUE;
 }
 
-BOOL __stdcall pfile_delete_save(_uiheroinfo *hero_info)
+BOOL pfile_delete_save(_uiheroinfo *hero_info)
 {
-	unsigned int save_num;
-	char FileName[MAX_PATH];
+	DWORD save_num;
 
 	save_num = pfile_get_save_num_from_name(hero_info->name);
 	if (save_num < MAX_CHARACTERS) {
 		hero_names[save_num][0] = '\0';
-		pfile_get_save_path(FileName, sizeof(FileName), save_num);
-		DeleteFile(FileName);
+		RemoveFile(GetSavePath(save_num).c_str());
 	}
 	return TRUE;
 }
 
-void __cdecl pfile_read_player_from_save()
+void pfile_read_player_from_save()
 {
 	HANDLE archive;
-	unsigned int save_num;
+	DWORD save_num;
 	PkPlayerStruct pkplr;
 
 	save_num = pfile_get_save_num_from_name(gszHero);
@@ -499,7 +433,7 @@ void __cdecl pfile_read_player_from_save()
 	pfile_SFileCloseArchive(archive);
 }
 
-void __fastcall GetTempLevelNames(char *szTemp)
+void GetTempLevelNames(char *szTemp)
 {
 	// BUGFIX: function call has no purpose
 	pfile_get_save_num_from_name(plr[myplr]._pName);
@@ -509,9 +443,9 @@ void __fastcall GetTempLevelNames(char *szTemp)
 		sprintf(szTemp, "templ%02d", currlevel);
 }
 
-void __fastcall GetPermLevelNames(char *szPerm)
+void GetPermLevelNames(char *szPerm)
 {
-	unsigned int save_num;
+	DWORD save_num;
 	BOOL has_file;
 
 	save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
@@ -529,17 +463,17 @@ void __fastcall GetPermLevelNames(char *szPerm)
 	}
 }
 
-void __fastcall pfile_get_game_name(char *dst)
+void pfile_get_game_name(char *dst)
 {
 	// BUGFIX: function call with no purpose
 	pfile_get_save_num_from_name(plr[myplr]._pName);
 	strcpy(dst, "game");
 }
 
-void __cdecl pfile_remove_temp_files()
+void pfile_remove_temp_files()
 {
 	if (gbMaxPlayers <= 1) {
-		unsigned int save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
+		DWORD save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
 		if (!pfile_open_archive(FALSE, save_num))
 			app_fatal("Unable to write to save file archive");
 		mpqapi_remove_hash_entries(GetTempSaveNames);
@@ -547,7 +481,7 @@ void __cdecl pfile_remove_temp_files()
 	}
 }
 
-BOOL __stdcall GetTempSaveNames(DWORD dwIndex, char *szTemp)
+BOOL GetTempSaveNames(DWORD dwIndex, char *szTemp)
 {
 	const char *fmt;
 
@@ -563,32 +497,35 @@ BOOL __stdcall GetTempSaveNames(DWORD dwIndex, char *szTemp)
 	return TRUE;
 }
 
-void __cdecl pfile_rename_temp_to_perm()
+void pfile_rename_temp_to_perm()
 {
-	unsigned int save_num;
-	unsigned int i;
-	char TempName[MAX_PATH];
-	char PermName[MAX_PATH];
+	DWORD dwChar, dwIndex;
+	BOOL bResult;
+	char szTemp[MAX_PATH];
+	char szPerm[MAX_PATH];
 
-	save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
-	if (!pfile_open_archive(FALSE, save_num))
+	dwChar = pfile_get_save_num_from_name(plr[myplr]._pName);
+	assert(dwChar < MAX_CHARACTERS);
+	assert(gbMaxPlayers == 1);
+	if (!pfile_open_archive(FALSE, dwChar))
 		app_fatal("Unable to write to save file archive");
 
-	i = 0;
-	while (GetTempSaveNames(i, TempName)) {
-		GetPermSaveNames(i, PermName);
-		i++;
-		if (mpqapi_has_file(TempName)) {
-			if (mpqapi_has_file(PermName))
-				mpqapi_remove_hash_entry(PermName);
-			mpqapi_rename(TempName, PermName);
+	dwIndex = 0;
+	while (GetTempSaveNames(dwIndex, szTemp)) {
+		bResult = GetPermSaveNames(dwIndex, szPerm);
+		assert(bResult);
+		dwIndex++;
+		if (mpqapi_has_file(szTemp)) {
+			if (mpqapi_has_file(szPerm))
+				mpqapi_remove_hash_entry(szPerm);
+			mpqapi_rename(szTemp, szPerm);
 		}
 	}
-	GetPermSaveNames(i, PermName);
-	pfile_flush(TRUE, save_num);
+	assert(! GetPermSaveNames(dwIndex,szPerm));
+	pfile_flush(TRUE, dwChar);
 }
 
-BOOL __stdcall GetPermSaveNames(DWORD dwIndex, char *szPerm)
+BOOL GetPermSaveNames(DWORD dwIndex, char *szPerm)
 {
 	const char *fmt;
 
@@ -604,46 +541,43 @@ BOOL __stdcall GetPermSaveNames(DWORD dwIndex, char *szPerm)
 	return TRUE;
 }
 
-void __fastcall pfile_write_save_file(const char *pszName, BYTE *pbData, DWORD dwLen, DWORD qwLen)
+void pfile_write_save_file(const char *pszName, BYTE *pbData, DWORD dwLen, DWORD qwLen)
 {
-	unsigned int save_num;
-	char FileName[MAX_PATH];
+	DWORD save_num;
 
-	pfile_strcpy(FileName, pszName);
 	save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
 	{
-		char password[16] = PASSWORD_SINGLE;
-		if (gbMaxPlayers > 1)
-			strcpy(password, PASSWORD_MULTI);
+		const char *password;
+		if (gbIsSpawn) {
+			password = PASSWORD_SPAWN_SINGLE;
+			if (gbMaxPlayers > 1)
+				password = PASSWORD_SPAWN_MULTI;
+		} else {
+			password = PASSWORD_SINGLE;
+			if (gbMaxPlayers > 1)
+				password = PASSWORD_MULTI;
+		}
 
 		codec_encode(pbData, dwLen, qwLen, password);
 	}
 	if (!pfile_open_archive(FALSE, save_num))
 		app_fatal("Unable to write so save file archive");
-	mpqapi_write_file(FileName, pbData, qwLen);
+	mpqapi_write_file(pszName, pbData, qwLen);
 	pfile_flush(TRUE, save_num);
 }
 
-void __fastcall pfile_strcpy(char *dst, const char *src)
+BYTE *pfile_read(const char *pszName, DWORD *pdwLen)
 {
-	strcpy(dst, src);
-}
-
-BYTE *__fastcall pfile_read(const char *pszName, DWORD *pdwLen)
-{
-	unsigned int save_num;
-	char FileName[MAX_PATH];
+	DWORD save_num, nread;
 	HANDLE archive, save;
 	BYTE *buf;
-	DWORD nread;
 
-	pfile_strcpy(FileName, pszName);
 	save_num = pfile_get_save_num_from_name(plr[myplr]._pName);
 	archive = pfile_open_save_archive(NULL, save_num);
 	if (archive == NULL)
 		app_fatal("Unable to open save file archive");
 
-	if (!SFileOpenFileEx(archive, FileName, 0, &save))
+	if (!SFileOpenFileEx(archive, pszName, 0, &save))
 		app_fatal("Unable to open save file");
 
 	*pdwLen = SFileGetFileSize(save, NULL);
@@ -657,39 +591,34 @@ BYTE *__fastcall pfile_read(const char *pszName, DWORD *pdwLen)
 	pfile_SFileCloseArchive(archive);
 
 	{
-		char password[16] = PASSWORD_SINGLE;
+		const char *password;
 		DWORD nSize = 16;
 
-		if (gbMaxPlayers > 1)
-			strcpy(password, PASSWORD_MULTI);
+		if (gbIsSpawn) {
+			password = PASSWORD_SPAWN_SINGLE;
+			if (gbMaxPlayers > 1)
+				password = PASSWORD_SPAWN_MULTI;
+		} else {
+			password = PASSWORD_SINGLE;
+			if (gbMaxPlayers > 1)
+				password = PASSWORD_MULTI;
+		}
 
 		*pdwLen = codec_decode(buf, *pdwLen, password);
 		if (*pdwLen == 0) {
-			// BUGFIFX: *pdwLen has already been overwritten with zero and the savefile has been closed
-			// there is no way this can work correctly
-			if (gbMaxPlayers > 1) {
-				GetComputerName(password, &nSize);
-				if (SFileSetFilePointer(save, 0, NULL, 0))
-					app_fatal("Unable to read save file");
-
-				if (!SFileReadFile(save, buf, *pdwLen, &nread, NULL))
-					app_fatal("Unable to read save file");
-				*pdwLen = codec_decode(buf, *pdwLen, password);
-			}
-			if (*pdwLen == 0)
-				app_fatal("Invalid save file");
+			app_fatal("Invalid save file");
 		}
 	}
 	return buf;
 }
 
-void __fastcall pfile_update(BOOL force_save)
+void pfile_update(BOOL force_save)
 {
 	// BUGFIX: these tick values should be treated as unsigned to handle overflows correctly
 	static int save_prev_tc;
 
 	if (gbMaxPlayers != 1) {
-		int tick = GetTickCount();
+		int tick = SDL_GetTicks();
 		if (force_save || tick - save_prev_tc > 60000) {
 			save_prev_tc = tick;
 			pfile_write_hero();

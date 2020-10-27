@@ -1,24 +1,27 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file doom.cpp
+ *
+ * Implementation of the map of the stars quest.
+ */
+#include "all.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
 int doom_quest_time;
 int doom_stars_drawn;
-void *pDoomCel;
-BOOL doomflag;
+BYTE *pDoomCel;
+DIABOOL doomflag;
 int DoomQuestState;
 
 /*
-void __cdecl doom_reset_state()
+void doom_reset_state()
 {
     if (DoomQuestState <= 0) {
         DoomQuestState = 0;
     }
 }
 
-void __cdecl doom_play_movie()
+void doom_play_movie()
 {
     if (DoomQuestState < 36001) {
         DoomQuestState++;
@@ -30,7 +33,7 @@ void __cdecl doom_play_movie()
 }
 */
 
-int __cdecl doom_get_frame_from_time()
+int doom_get_frame_from_time()
 {
 	if (DoomQuestState == 36001) {
 		return 31;
@@ -39,20 +42,48 @@ int __cdecl doom_get_frame_from_time()
 	return DoomQuestState / 1200;
 }
 
-void __cdecl doom_alloc_cel()
+#ifdef HELLFIRE
+BOOLEAN doom_alloc_cel()
+#else
+void doom_alloc_cel()
+#endif
 {
-	pDoomCel = DiabloAllocPtr(229376);
+#ifdef HELLFIRE
+	doom_cleanup();
+	pDoomCel = DiabloAllocPtr(0x39000);
+	return pDoomCel ? TRUE : FALSE;
+#else
+	pDoomCel = DiabloAllocPtr(0x38000);
+#endif
 }
 
-void __cdecl doom_cleanup()
+void doom_cleanup()
 {
-	void *ptr = pDoomCel;
-	pDoomCel = NULL;
-	mem_free_dbg(ptr);
+#ifdef HELLFIRE
+	if (pDoomCel != NULL) {
+		MemFreeDbg(pDoomCel);
+		pDoomCel = NULL;
+	}
+#else
+	MemFreeDbg(pDoomCel);
+#endif
 }
 
-void __cdecl doom_load_graphics()
+#ifdef HELLFIRE
+BOOLEAN doom_load_graphics()
+#else
+void doom_load_graphics()
+#endif
 {
+#ifdef HELLFIRE
+	BOOLEAN ret;
+
+	ret = FALSE;
+	strcpy(tempstr, "Items\\Map\\MapZtown.CEL");
+	if (LoadFileWithMem(tempstr, pDoomCel))
+		ret = TRUE;
+	return ret;
+#else
 	if (doom_quest_time == 31) {
 		strcpy(tempstr, "Items\\Map\\MapZDoom.CEL");
 	} else if (doom_quest_time < 10) {
@@ -61,30 +92,46 @@ void __cdecl doom_load_graphics()
 		sprintf(tempstr, "Items\\Map\\MapZ00%i.CEL", doom_quest_time);
 	}
 	LoadFileWithMem(tempstr, pDoomCel);
+#endif
 }
 
-void __cdecl doom_init()
+void doom_init()
 {
+#ifdef HELLFIRE
+	if (doom_alloc_cel()) {
+		doom_quest_time = doom_get_frame_from_time() == 31 ? 31 : 0;
+		if (doom_load_graphics()) {
+			doomflag = TRUE;
+		} else {
+			doom_close();
+		}
+	}
+#else
 	doomflag = TRUE;
 	doom_alloc_cel();
 	doom_quest_time = doom_get_frame_from_time() == 31 ? 31 : 0;
 	doom_load_graphics();
+#endif
 }
 
-void __cdecl doom_close()
+void doom_close()
 {
+#ifndef HELLFIRE
 	if (doomflag) {
+#endif
 		doomflag = FALSE;
 		doom_cleanup();
+#ifndef HELLFIRE
 	}
+#endif
 }
 
-void __cdecl doom_draw()
+void doom_draw()
 {
 	if (!doomflag) {
 		return;
 	}
-
+#ifndef HELLFIRE
 	if (doom_quest_time != 31) {
 		doom_stars_drawn++;
 		if (doom_stars_drawn >= 5) {
@@ -96,8 +143,9 @@ void __cdecl doom_draw()
 			doom_load_graphics();
 		}
 	}
+#endif
 
-	CelDecodeOnly(64, 511, (BYTE *)pDoomCel, 1, 640);
+	CelDraw(PANEL_X, PANEL_Y - 1, pDoomCel, 1, 640);
 }
 
 DEVILUTION_END_NAMESPACE

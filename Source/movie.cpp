@@ -1,70 +1,59 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file movie.cpp
+ *
+ * Implementation of video playback.
+ */
+#include "all.h"
+#include "../3rdParty/Storm/Source/storm.h"
+#include "../SourceX/display.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
+/** Should the movie continue playing. */
 BYTE movie_playing;
+/** Should the movie play in a loop. */
 BOOL loop_movie;
 
-void __fastcall play_movie(char *pszMovie, BOOL user_can_close)
+/**
+ * @brief Start playback of a given video.
+ * @param pszMovie The file name of the video
+ * @param user_can_close Set to false to make the video unskippable.
+ */
+void play_movie(const char *pszMovie, BOOL user_can_close)
 {
-	WNDPROC saveProc;
 	HANDLE video_stream;
 
-	if (!gbActive) {
-		return;
-	}
-
-	saveProc = SetWindowProc(MovieWndProc);
-	InvalidateRect(ghMainWnd, 0, 0);
-	UpdateWindow(ghMainWnd);
 	movie_playing = TRUE;
 	sound_disable_music(TRUE);
-	sfx_stop();
+	stream_stop();
 	effects_play_sound("Sfx\\Misc\\blank.wav");
 
 	SVidPlayBegin(pszMovie, 0, 0, 0, 0, loop_movie ? 0x100C0808 : 0x10280808, &video_stream);
-	if (video_stream) {
-		MSG Msg;
-		while (video_stream) {
-			if (!gbActive || user_can_close && !movie_playing)
+	MSG Msg;
+	while (video_stream && movie_playing) {
+		while (movie_playing && PeekMessage(&Msg)) {
+			switch (Msg.message) {
+			case DVL_WM_KEYDOWN:
+			case DVL_WM_LBUTTONDOWN:
+			case DVL_WM_RBUTTONDOWN:
+				if (user_can_close || (Msg.message == DVL_WM_KEYDOWN && Msg.wParam == DVL_VK_ESCAPE))
+					movie_playing = FALSE;
 				break;
-			while (PeekMessage(&Msg, NULL, 0, 0, PM_REMOVE)) {
-				if (Msg.message != WM_QUIT) {
-					TranslateMessage(&Msg);
-					DispatchMessage(&Msg);
-				}
+			case DVL_WM_QUIT:
+				SVidPlayEnd(video_stream);
+				diablo_quit(0);
+				break;
 			}
-			if (!SVidPlayContinue())
-				break;
 		}
-		if (video_stream)
-			SVidPlayEnd(video_stream);
+		if (!SVidPlayContinue())
+			break;
 	}
-	SetWindowProc(saveProc);
+	if (video_stream)
+		SVidPlayEnd(video_stream);
 	sound_disable_music(FALSE);
-}
-// 634980: using guessed type int gbActive;
-
-LRESULT __stdcall MovieWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
-{
-	switch (Msg) {
-	case WM_KEYFIRST:
-	case WM_CHAR:
-	case WM_LBUTTONDOWN:
-	case WM_RBUTTONDOWN:
-		movie_playing = FALSE;
-		break;
-	case WM_SYSCOMMAND:
-		if (wParam == SC_CLOSE) {
-			movie_playing = FALSE;
-			return 0;
-		}
-		break;
-	}
-
-	return MainWndProc(hWnd, Msg, wParam, lParam);
+	movie_playing = FALSE;
+	SDL_GetMouseState(&MouseX, &MouseY);
+	OutputToLogical(&MouseX, &MouseY);
 }
 
 DEVILUTION_END_NAMESPACE

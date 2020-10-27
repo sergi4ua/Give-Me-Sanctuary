@@ -1,95 +1,104 @@
-//HEADER_GOES_HERE
+/**
+ * @file gendung.h
+ *
+ * Interface of general dungeon generation code.
+ */
 #ifndef __GENDUNG_H__
 #define __GENDUNG_H__
 
-extern WORD level_frame_types[MAXTILES];
-extern int themeCount;
-extern char nTransTable[2049];
-//int dword_52D204;
-extern int dMonster[MAXDUNX][MAXDUNY];
-extern unsigned char dungeon[40][40];
-extern char dObject[MAXDUNX][MAXDUNY];
-extern BYTE *pSpeedCels;
-extern int nlevel_frames; // weak
-extern char pdungeon[40][40];
-extern char dDead[MAXDUNX][MAXDUNY];
-extern WORD dpiece_defs_map_1[MAXDUNX * MAXDUNY][16];
-extern char dPreLight[MAXDUNX][MAXDUNY];
-extern char TransVal; // weak
-extern int MicroTileLen;
-extern char dflags[40][40];
-extern int dPiece[MAXDUNX][MAXDUNY];
-extern char dLight[MAXDUNX][MAXDUNY];
-extern int setloadflag_2; // weak
-extern int tile_defs[MAXTILES];
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern BYTE dungeon[DMAXX][DMAXY];
+extern BYTE pdungeon[DMAXX][DMAXY];
+extern char dflags[DMAXX][DMAXY];
+extern int setpc_x;
+extern int setpc_y;
+extern int setpc_w;
+extern int setpc_h;
+extern BYTE *pSetPiece;
+extern BOOL setloadflag;
+extern BYTE *pSpecialCels;
 extern BYTE *pMegaTiles;
 extern BYTE *pLevelPieces;
-extern int gnDifficulty; // idb
-extern char block_lvid[2049];
-//char byte_5B78EB;
-extern char dTransVal[MAXDUNX][MAXDUNY];
-extern BOOLEAN nTrapTable[2049];
-extern BYTE leveltype;
-extern unsigned char currlevel; // idb
-extern char TransList[256];
-extern BOOLEAN nSolidTable[2049];
-extern int level_frame_count[MAXTILES];
-extern ScrollStruct ScrollInfo;
 extern BYTE *pDungeonCels;
+extern BYTE *pSpeedCels;
 extern int SpeedFrameTbl[128][16];
-extern THEME_LOC themeLoc[MAXTHEMES];
-extern char dPlayer[MAXDUNX][MAXDUNY];
-extern int dword_5C2FF8;   // weak
-extern int dword_5C2FFC;   // weak
-extern int scr_pix_width;  // weak
-extern int scr_pix_height; // weak
-extern char dArch[MAXDUNX][MAXDUNY];
-extern char nBlockTable[2049];
-extern void *level_special_cel;
-extern char dFlags[MAXDUNX][MAXDUNY];
-extern char dItem[MAXDUNX][MAXDUNY];
-extern BYTE setlvlnum;
+extern char block_lvid[MAXTILES + 1];
+extern int level_frame_count[MAXTILES];
+extern int tile_defs[MAXTILES];
+extern WORD level_frame_types[MAXTILES];
 extern int level_frame_sizes[MAXTILES];
-extern char nMissileTable[2049];
-extern char *pSetPiece_2;
-extern char setlvltype; // weak
-extern char setlevel;   // weak
-extern int LvlViewY;    // weak
-extern int LvlViewX;    // weak
-extern int dmaxx;       // weak
-extern int dmaxy;       // weak
-extern int setpc_h;     // weak
-extern int setpc_w;     // weak
-extern int setpc_x;     // idb
-extern int ViewX;       // idb
-extern int ViewY;       // idb
-extern int setpc_y;     // idb
+extern int nlevel_frames;
+extern BOOLEAN nBlockTable[MAXTILES + 1];
+extern BOOLEAN nSolidTable[MAXTILES + 1];
+extern BOOLEAN nTransTable[MAXTILES + 1];
+extern BOOLEAN nMissileTable[MAXTILES + 1];
+extern BOOLEAN nTrapTable[MAXTILES + 1];
+extern int dminx;
+extern int dminy;
+extern int dmaxx;
+extern int dmaxy;
+extern int gnDifficulty;
+extern BYTE leveltype;
+extern BYTE currlevel;
+extern BOOLEAN setlevel;
+extern BYTE setlvlnum;
+extern char setlvltype;
+extern int ViewX;
+extern int ViewY;
+extern int ViewBX;
+extern int ViewBY;
+extern int ViewDX;
+extern int ViewDY;
+extern ScrollStruct ScrollInfo;
+extern int LvlViewX;
+extern int LvlViewY;
+extern int MicroTileLen;
+extern char TransVal;
+extern BOOLEAN TransList[256];
+extern int dPiece[MAXDUNX][MAXDUNY];
+extern MICROS dpiece_defs_map_2[MAXDUNX][MAXDUNY];
+extern MICROS dpiece_defs_map_1[MAXDUNX * MAXDUNY];
+extern char dTransVal[MAXDUNX][MAXDUNY];
+extern char dLight[MAXDUNX][MAXDUNY];
+extern char dPreLight[MAXDUNX][MAXDUNY];
+extern char dFlags[MAXDUNX][MAXDUNY];
+extern char dPlayer[MAXDUNX][MAXDUNY];
+extern int dMonster[MAXDUNX][MAXDUNY];
+extern char dDead[MAXDUNX][MAXDUNY];
+extern char dObject[MAXDUNX][MAXDUNY];
+extern char dItem[MAXDUNX][MAXDUNY];
 extern char dMissile[MAXDUNX][MAXDUNY];
-extern int dminx; // weak
-extern int dminy; // weak
-extern WORD dpiece_defs_map_2[MAXDUNX][MAXDUNY][16];
+extern char dSpecial[MAXDUNX][MAXDUNY];
+extern int themeCount;
+extern THEME_LOC themeLoc[MAXTHEMES];
 
-void __cdecl FillSolidBlockTbls();
-void __cdecl MakeSpeedCels();
-void __fastcall SortTiles(int frames);
-void __fastcall SwapTile(int f1, int f2);
-int __fastcall IsometricCoord(int x, int y);
-void __cdecl SetSpeedCels();
-void __cdecl SetDungeonMicros();
-void __cdecl DRLG_InitTrans();
-void __fastcall DRLG_MRectTrans(int x1, int y1, int x2, int y2);
-void __fastcall DRLG_RectTrans(int x1, int y1, int x2, int y2);
-void __fastcall DRLG_CopyTrans(int sx, int sy, int dx, int dy);
-void __fastcall DRLG_ListTrans(int num, unsigned char *List);
-void __fastcall DRLG_AreaTrans(int num, unsigned char *List);
-void __cdecl DRLG_InitSetPC();
-void __cdecl DRLG_SetPC();
-void __fastcall Make_SetPC(int x, int y, int w, int h);
-BOOL __fastcall DRLG_WillThemeRoomFit(int floor, int x, int y, int minSize, int maxSize, int *width, int *height);
-void __fastcall DRLG_CreateThemeRoom(int themeIndex);
-void __fastcall DRLG_PlaceThemeRooms(int minSize, int maxSize, int floor, int freq, int rndSize);
-void __cdecl DRLG_HoldThemeRooms();
-BOOL __fastcall SkipThemeRoom(int x, int y);
-void __cdecl InitLevels();
+void FillSolidBlockTbls();
+void SetDungeonMicros();
+void DRLG_InitTrans();
+void DRLG_MRectTrans(int x1, int y1, int x2, int y2);
+void DRLG_RectTrans(int x1, int y1, int x2, int y2);
+void DRLG_CopyTrans(int sx, int sy, int dx, int dy);
+void DRLG_ListTrans(int num, BYTE *List);
+void DRLG_AreaTrans(int num, BYTE *List);
+void DRLG_InitSetPC();
+void DRLG_SetPC();
+void Make_SetPC(int x, int y, int w, int h);
+BOOL DRLG_WillThemeRoomFit(int floor, int x, int y, int minSize, int maxSize, int *width, int *height);
+void DRLG_CreateThemeRoom(int themeIndex);
+void DRLG_PlaceThemeRooms(int minSize, int maxSize, int floor, int freq, int rndSize);
+void DRLG_HoldThemeRooms();
+BOOL SkipThemeRoom(int x, int y);
+void InitLevels();
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __GENDUNG_H__ */

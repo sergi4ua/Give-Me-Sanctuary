@@ -1,9 +1,26 @@
-//HEADER_GOES_HERE
+/**
+ * @file tmsg.h
+ *
+ * Interface of functionality transmitting chat messages.
+ */
 #ifndef __TMSG_H__
 #define __TMSG_H__
 
-int __fastcall tmsg_get(BYTE *pbMsg, DWORD dwMaxLen);
-void __fastcall tmsg_add(BYTE *pbMsg, BYTE bLen);
-void *__cdecl tmsg_cleanup();
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int tmsg_get(BYTE *pbMsg, DWORD dwMaxLen);
+void tmsg_add(BYTE *pbMsg, BYTE bLen);
+void tmsg_start();
+void tmsg_cleanup();
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __TMSG_H__ */

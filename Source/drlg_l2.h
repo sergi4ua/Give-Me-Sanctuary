@@ -1,173 +1,160 @@
-//HEADER_GOES_HERE
+/**
+ * @file drlg_l2.h
+ *
+ * Interface of the catacombs level generation algorithms.
+ */
 #ifndef __DRLG_L2_H__
 #define __DRLG_L2_H__
 
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int nSx1;
-extern int nSx2; // weak
 extern int nSy1;
-extern int nSy2; // weak
+extern int nSx2;
+extern int nSy2;
 extern int nRoomCnt;
-extern char predungeon[40][40];
+extern BYTE predungeon[DMAXX][DMAXY];
 extern ROOMNODE RoomList[81];
 extern HALLNODE *pHallList;
 
-void __cdecl InitDungeon();
-void __cdecl L2LockoutFix();
-void __cdecl L2DoorFix();
-void __fastcall LoadL2Dungeon(char *sFileName, int vx, int vy);
-void __cdecl DRLG_L2Pass3();
-void __fastcall LoadPreL2Dungeon(char *sFileName, int vx, int vy);
-void __fastcall CreateL2Dungeon(int rseed, int entry);
-void __cdecl DRLG_LoadL2SP();
-void __cdecl DRLG_FreeL2SP();
-void __fastcall DRLG_L2(int entry);
-BOOLEAN __fastcall DRLG_L2PlaceMiniSet(unsigned char *miniset, int tmin, int tmax, int cx, int cy, BOOLEAN setview, int ldir);
-void __fastcall DRLG_L2PlaceRndSet(unsigned char *miniset, int rndper);
-void __cdecl DRLG_L2Subs();
-void __cdecl DRLG_L2Shadows();
-void __fastcall DRLG_L2SetRoom(int rx1, int ry1);
-void __cdecl L2TileFix();
-BOOLEAN __cdecl CreateDungeon();
-void __fastcall CreateRoom(int nX1, int nY1, int nX2, int nY2, int nRDest, int nHDir, int ForceHW, int nH, int nW);
-void __fastcall DefineRoom(int nX1, int nY1, int nX2, int nY2, int ForceHW);
-void __fastcall AddHall(int nX1, int nY1, int nX2, int nY2, int nHd);
-void __fastcall GetHall(int *nX1, int *nY1, int *nX2, int *nY2, int *nHd);
-void __fastcall ConnectHall(int nX1, int nY1, int nX2, int nY2, int nHd);
-void __fastcall CreateDoorType(int nX, int nY);
-void __fastcall PlaceHallExt(int nX, int nY);
-void __fastcall DoPatternCheck(int i, int j);
-BOOLEAN __cdecl DL2_FillVoids();
-BOOLEAN __fastcall DL2_Cont(BOOLEAN x1f, BOOLEAN y1f, BOOLEAN x2f, BOOLEAN y2f);
-int __cdecl DL2_NumNoChar();
-void __fastcall DL2_DrawRoom(int x1, int y1, int x2, int y2);
-void __fastcall DL2_KnockWalls(int x1, int y1, int x2, int y2);
-void __cdecl DRLG_L2FloodTVal();
-void __fastcall DRLG_L2FTVR(int i, int j, int x, int y, int d);
-void __cdecl DRLG_L2TransFix();
-void __cdecl L2DirtFix();
-void __cdecl DRLG_InitL2Vals();
+void InitDungeon();
+void L2LockoutFix();
+void L2DoorFix();
+void LoadL2Dungeon(const char *sFileName, int vx, int vy);
+void LoadPreL2Dungeon(const char *sFileName, int vx, int vy);
+void CreateL2Dungeon(DWORD rseed, int entry);
 
 /* rdata */
-extern int Area_Min; // weak
-extern int Room_Max; // weak
-extern int Room_Min; // weak
+extern int Area_Min;
+extern int Room_Max;
+extern int Room_Min;
 extern int Dir_Xadd[5];
 extern int Dir_Yadd[5];
 extern ShadowStruct SPATSL2[2];
 //short word_48489A;
-extern unsigned char BTYPESL2[161];
-extern unsigned char BSTYPESL2[161];
-extern unsigned char VARCH1[];
-extern unsigned char VARCH2[];
-extern unsigned char VARCH3[];
-extern unsigned char VARCH4[];
-extern unsigned char VARCH5[];
-extern unsigned char VARCH6[];
-extern unsigned char VARCH7[];
-extern unsigned char VARCH8[];
-extern unsigned char VARCH9[];
-extern unsigned char VARCH10[];
-extern unsigned char VARCH11[];
-extern unsigned char VARCH12[];
-extern unsigned char VARCH13[];
-extern unsigned char VARCH14[];
-extern unsigned char VARCH15[];
-extern unsigned char VARCH16[];
-extern unsigned char VARCH17[];
-extern unsigned char VARCH18[];
-extern unsigned char VARCH19[];
-extern unsigned char VARCH20[];
-extern unsigned char VARCH21[];
-extern unsigned char VARCH22[];
-extern unsigned char VARCH23[];
-extern unsigned char VARCH24[];
-extern unsigned char VARCH25[];
-extern unsigned char VARCH26[];
-extern unsigned char VARCH27[];
-extern unsigned char VARCH28[];
-extern unsigned char VARCH29[];
-extern unsigned char VARCH30[];
-extern unsigned char VARCH31[];
-extern unsigned char VARCH32[];
-extern unsigned char VARCH33[];
-extern unsigned char VARCH34[];
-extern unsigned char VARCH35[];
-extern unsigned char VARCH36[];
-extern unsigned char VARCH37[];
-extern unsigned char VARCH38[];
-extern unsigned char VARCH39[];
-extern unsigned char VARCH40[];
-extern unsigned char HARCH1[];
-extern unsigned char HARCH2[];
-extern unsigned char HARCH3[];
-extern unsigned char HARCH4[];
-extern unsigned char HARCH5[];
-extern unsigned char HARCH6[];
-extern unsigned char HARCH7[];
-extern unsigned char HARCH8[];
-extern unsigned char HARCH9[];
-extern unsigned char HARCH10[];
-extern unsigned char HARCH11[];
-extern unsigned char HARCH12[];
-extern unsigned char HARCH13[];
-extern unsigned char HARCH14[];
-extern unsigned char HARCH15[];
-extern unsigned char HARCH16[];
-extern unsigned char HARCH17[];
-extern unsigned char HARCH18[];
-extern unsigned char HARCH19[];
-extern unsigned char HARCH20[];
-extern unsigned char HARCH21[];
-extern unsigned char HARCH22[];
-extern unsigned char HARCH23[];
-extern unsigned char HARCH24[];
-extern unsigned char HARCH25[];
-extern unsigned char HARCH26[];
-extern unsigned char HARCH27[];
-extern unsigned char HARCH28[];
-extern unsigned char HARCH29[];
-extern unsigned char HARCH30[];
-extern unsigned char HARCH31[];
-extern unsigned char HARCH32[];
-extern unsigned char HARCH33[];
-extern unsigned char HARCH34[];
-extern unsigned char HARCH35[];
-extern unsigned char HARCH36[];
-extern unsigned char HARCH37[];
-extern unsigned char HARCH38[];
-extern unsigned char HARCH39[];
-extern unsigned char HARCH40[];
-extern unsigned char USTAIRS[];
-extern unsigned char DSTAIRS[];
-extern unsigned char WARPSTAIRS[];
-extern unsigned char CRUSHCOL[];
-extern unsigned char BIG1[];
-extern unsigned char BIG2[];
-extern unsigned char BIG3[];
-extern unsigned char BIG4[];
-extern unsigned char BIG5[];
-extern unsigned char BIG6[];
-extern unsigned char BIG7[];
-extern unsigned char BIG8[];
-extern unsigned char BIG9[];
-extern unsigned char BIG10[];
-extern unsigned char RUINS1[];
-extern unsigned char RUINS2[];
-extern unsigned char RUINS3[];
-extern unsigned char RUINS4[];
-extern unsigned char RUINS5[];
-extern unsigned char RUINS6[];
-extern unsigned char RUINS7[];
-extern unsigned char PANCREAS1[];
-extern unsigned char PANCREAS2[];
-extern unsigned char CTRDOOR1[];
-extern unsigned char CTRDOOR2[];
-extern unsigned char CTRDOOR3[];
-extern unsigned char CTRDOOR4[];
-extern unsigned char CTRDOOR5[];
-extern unsigned char CTRDOOR6[];
-extern unsigned char CTRDOOR7[];
-extern unsigned char CTRDOOR8[];
+extern BYTE BTYPESL2[161];
+extern BYTE BSTYPESL2[161];
+extern BYTE VARCH1[];
+extern BYTE VARCH2[];
+extern BYTE VARCH3[];
+extern BYTE VARCH4[];
+extern BYTE VARCH5[];
+extern BYTE VARCH6[];
+extern BYTE VARCH7[];
+extern BYTE VARCH8[];
+extern BYTE VARCH9[];
+extern BYTE VARCH10[];
+extern BYTE VARCH11[];
+extern BYTE VARCH12[];
+extern BYTE VARCH13[];
+extern BYTE VARCH14[];
+extern BYTE VARCH15[];
+extern BYTE VARCH16[];
+extern BYTE VARCH17[];
+extern BYTE VARCH18[];
+extern BYTE VARCH19[];
+extern BYTE VARCH20[];
+extern BYTE VARCH21[];
+extern BYTE VARCH22[];
+extern BYTE VARCH23[];
+extern BYTE VARCH24[];
+extern BYTE VARCH25[];
+extern BYTE VARCH26[];
+extern BYTE VARCH27[];
+extern BYTE VARCH28[];
+extern BYTE VARCH29[];
+extern BYTE VARCH30[];
+extern BYTE VARCH31[];
+extern BYTE VARCH32[];
+extern BYTE VARCH33[];
+extern BYTE VARCH34[];
+extern BYTE VARCH35[];
+extern BYTE VARCH36[];
+extern BYTE VARCH37[];
+extern BYTE VARCH38[];
+extern BYTE VARCH39[];
+extern BYTE VARCH40[];
+extern BYTE HARCH1[];
+extern BYTE HARCH2[];
+extern BYTE HARCH3[];
+extern BYTE HARCH4[];
+extern BYTE HARCH5[];
+extern BYTE HARCH6[];
+extern BYTE HARCH7[];
+extern BYTE HARCH8[];
+extern BYTE HARCH9[];
+extern BYTE HARCH10[];
+extern BYTE HARCH11[];
+extern BYTE HARCH12[];
+extern BYTE HARCH13[];
+extern BYTE HARCH14[];
+extern BYTE HARCH15[];
+extern BYTE HARCH16[];
+extern BYTE HARCH17[];
+extern BYTE HARCH18[];
+extern BYTE HARCH19[];
+extern BYTE HARCH20[];
+extern BYTE HARCH21[];
+extern BYTE HARCH22[];
+extern BYTE HARCH23[];
+extern BYTE HARCH24[];
+extern BYTE HARCH25[];
+extern BYTE HARCH26[];
+extern BYTE HARCH27[];
+extern BYTE HARCH28[];
+extern BYTE HARCH29[];
+extern BYTE HARCH30[];
+extern BYTE HARCH31[];
+extern BYTE HARCH32[];
+extern BYTE HARCH33[];
+extern BYTE HARCH34[];
+extern BYTE HARCH35[];
+extern BYTE HARCH36[];
+extern BYTE HARCH37[];
+extern BYTE HARCH38[];
+extern BYTE HARCH39[];
+extern BYTE HARCH40[];
+extern BYTE USTAIRS[];
+extern BYTE DSTAIRS[];
+extern BYTE WARPSTAIRS[];
+extern BYTE CRUSHCOL[];
+extern BYTE BIG1[];
+extern BYTE BIG2[];
+extern BYTE BIG3[];
+extern BYTE BIG4[];
+extern BYTE BIG5[];
+extern BYTE BIG6[];
+extern BYTE BIG7[];
+extern BYTE BIG8[];
+extern BYTE BIG9[];
+extern BYTE BIG10[];
+extern BYTE RUINS1[];
+extern BYTE RUINS2[];
+extern BYTE RUINS3[];
+extern BYTE RUINS4[];
+extern BYTE RUINS5[];
+extern BYTE RUINS6[];
+extern BYTE RUINS7[];
+extern BYTE PANCREAS1[];
+extern BYTE PANCREAS2[];
+extern BYTE CTRDOOR1[];
+extern BYTE CTRDOOR2[];
+extern BYTE CTRDOOR3[];
+extern BYTE CTRDOOR4[];
+extern BYTE CTRDOOR5[];
+extern BYTE CTRDOOR6[];
+extern BYTE CTRDOOR7[];
+extern BYTE CTRDOOR8[];
 extern int Patterns[100][10];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __DRLG_L2_H__ */

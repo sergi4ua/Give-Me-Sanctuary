@@ -1,6 +1,9 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file track.cpp
+ *
+ * Implementation of functionality tracking what the mouse cursor is pointing at.
+ */
+#include "all.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
@@ -8,7 +11,7 @@ static BYTE sgbIsScrolling;
 static DWORD sgdwLastWalk;
 static BOOL sgbIsWalking;
 
-void __cdecl track_process()
+void track_process()
 {
 	if (!sgbIsWalking)
 		return;
@@ -20,32 +23,32 @@ void __cdecl track_process()
 		return;
 
 	if (cursmx != plr[myplr]._ptargx || cursmy != plr[myplr]._ptargy) {
-		DWORD tick = GetTickCount();
+		DWORD tick = SDL_GetTicks();
 		if ((int)(tick - sgdwLastWalk) >= 300) {
 			sgdwLastWalk = tick;
 			NetSendCmdLoc(TRUE, CMD_WALKXY, cursmx, cursmy);
 			if (!sgbIsScrolling)
-				sgbIsScrolling = 1;
+				sgbIsScrolling = TRUE;
 		}
 	}
 }
 
-void __fastcall track_repeat_walk(BOOL rep)
+void track_repeat_walk(BOOL rep)
 {
 	if (sgbIsWalking == rep)
 		return;
 
 	sgbIsWalking = rep;
 	if (rep) {
-		sgbIsScrolling = 0;
-		sgdwLastWalk = GetTickCount() - 50;
+		sgbIsScrolling = FALSE;
+		sgdwLastWalk = SDL_GetTicks() - 50;
 		NetSendCmdLoc(TRUE, CMD_WALKXY, cursmx, cursmy);
 	} else if (sgbIsScrolling) {
-		sgbIsScrolling = 0;
+		sgbIsScrolling = FALSE;
 	}
 }
 
-BOOL __cdecl track_isscrolling()
+BOOL track_isscrolling()
 {
 	return sgbIsScrolling;
 }

@@ -1,13 +1,23 @@
-//HEADER_GOES_HERE
+/**
+ * @file capture.h
+ *
+ * Interface of the screenshot function.
+ */
 #ifndef __CAPTURE_H__
 #define __CAPTURE_H__
 
-void __cdecl CaptureScreen();
-BOOL __fastcall CaptureHdr(HANDLE hFile, short width, short height);
-BOOL __fastcall CapturePal(HANDLE hFile, PALETTEENTRY *palette);
-BOOL __fastcall CapturePix(HANDLE hFile, WORD width, WORD height, WORD stride, BYTE *pixels);
-BYTE *__fastcall CaptureEnc(BYTE *src, BYTE *dst, int width);
-HANDLE __fastcall CaptureFile(char *dst_path);
-void __fastcall RedPalette(PALETTEENTRY *pal);
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void CaptureScreen();
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __CAPTURE_H__ */

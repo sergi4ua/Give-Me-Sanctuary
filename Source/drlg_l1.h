@@ -1,68 +1,75 @@
-//HEADER_GOES_HERE
+/**
+ * @file drlg_l1.h
+ *
+ * Interface of the cathedral level generation algorithms.
+ */
 #ifndef __DRLG_L1_H__
 #define __DRLG_L1_H__
 
-extern char L5dungeon[80][80];
-extern char mydflags[40][40];
-extern int setloadflag; // weak
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern BYTE L5dungeon[80][80];
+extern BYTE L5dflags[DMAXX][DMAXY];
+extern BOOL L5setloadflag;
 extern int HR1;
 extern int HR2;
 extern int HR3;
+extern int UberRow;
+extern int UberCol;
+extern int dword_577368;
+extern int IsUberRoomOpened;
+extern int UberLeverRow;
+extern int UberLeverCol;
+extern int IsUberLeverActivated;
+extern int UberDiabloMonsterIndex;
 extern int VR1;
 extern int VR2;
 extern int VR3;
-extern void *pSetPiece; // idb
+extern BYTE *L5pSetPiece;
 
-void __cdecl DRLG_Init_Globals();
-void __fastcall LoadL1Dungeon(char *sFileName, int vx, int vy);
-void __cdecl DRLG_L1Floor();
-void __cdecl DRLG_L1Pass3();
-void __cdecl DRLG_InitL1Vals();
-void __fastcall LoadPreL1Dungeon(char *sFileName, int vx, int vy);
-void __fastcall CreateL5Dungeon(int rseed, int entry);
-void __cdecl DRLG_LoadL1SP();
-void __cdecl DRLG_FreeL1SP();
-void __fastcall DRLG_L5(int entry);
-void __fastcall DRLG_PlaceDoor(int x, int y);
-void __cdecl DRLG_L1Shadows();
-int __fastcall DRLG_PlaceMiniSet(const unsigned char *miniset, int tmin, int tmax, int cx, int cy, BOOL setview, int noquad, int ldir);
-void __cdecl InitL5Dungeon();
-void __cdecl L5ClearFlags();
-void __cdecl L5firstRoom();
-void __fastcall L5drawRoom(int x, int y, int w, int h);
-void __fastcall L5roomGen(int x, int y, int w, int h, int dir);
-BOOL __fastcall L5checkRoom(int x, int y, int width, int height);
-int __cdecl L5GetArea();
-void __cdecl L5makeDungeon();
-void __cdecl L5makeDmt();
-void __cdecl L5AddWall();
-int __fastcall L5HWallOk(int i, int j);
-int __fastcall L5VWallOk(int i, int j);
-void __fastcall L5HorizWall(int i, int j, char p, int dx);
-void __fastcall L5VertWall(int i, int j, char p, int dy);
-void __cdecl L5tileFix();
-void __cdecl DRLG_L5Subs();
-void __cdecl L5FillChambers();
-void __fastcall DRLG_L5GChamber(int sx, int sy, BOOLEAN topflag, BOOLEAN bottomflag, BOOLEAN leftflag, BOOLEAN rightflag);
-void __fastcall DRLG_L5GHall(int x1, int y1, int x2, int y2);
-void __fastcall DRLG_L5SetRoom(int rx1, int ry1);
-void __cdecl DRLG_L5FloodTVal();
-void __fastcall DRLG_L5FTVR(int i, int j, int x, int y, int d);
-void __cdecl DRLG_L5TransFix();
-void __cdecl DRLG_L5DirtFix();
-void __cdecl DRLG_L5CornerFix();
+void DRLG_Init_Globals();
+void LoadL1Dungeon(const char *sFileName, int vx, int vy);
+void LoadPreL1Dungeon(const char *sFileName, int vx, int vy);
+void CreateL5Dungeon(DWORD rseed, int entry);
+#ifdef HELLFIRE
+void DRLG_InitL5Vals();
+void drlg_l1_crypt_lavafloor();
+void drlg_l1_crypt_rndset(const BYTE *miniset, int rndper);
+void drlg_l1_set_crypt_room(int rx1, int ry1);
+void drlg_l1_set_corner_room(int rx1, int ry1);
+void drlg_l1_crypt_pattern1(int rndper);
+void drlg_l1_crypt_pattern2(int rndper);
+void drlg_l1_crypt_pattern3(int rndper);
+void drlg_l1_crypt_pattern4(int rndper);
+void drlg_l1_crypt_pattern5(int rndper);
+void drlg_l1_crypt_pattern6(int rndper);
+void drlg_l1_crypt_pattern7(int rndper);
+#endif
 
 /* rdata */
 extern const ShadowStruct SPATS[37];
-extern const unsigned char BSTYPES[206];
-extern const unsigned char L5BTYPES[206];
-extern const unsigned char STAIRSUP[];
-extern const unsigned char L5STAIRSUP[];
-extern const unsigned char STAIRSDOWN[];
-extern const unsigned char LAMPS[];
-extern const unsigned char PWATERIN[];
+
+// BUGFIX: These arrays should contain an additional 0 (207 elements).
+extern const BYTE BSTYPES[207];
+extern const BYTE L5BTYPES[207];
+
+extern const BYTE STAIRSUP[];
+extern const BYTE L5STAIRSUP[];
+extern const BYTE STAIRSDOWN[];
+extern const BYTE LAMPS[];
+extern const BYTE PWATERIN[];
 
 /* data */
-extern unsigned char L5ConvTbl[16];
+extern BYTE L5ConvTbl[16];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __DRLG_L1_H__ */

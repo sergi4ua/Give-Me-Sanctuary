@@ -1,6 +1,9 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file sync.cpp
+ *
+ * Implementation of functionality for syncing game state with other players.
+ */
+#include "all.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
@@ -10,7 +13,7 @@ WORD sgwLRU[MAXMONSTERS];
 int sgnSyncItem;
 int sgnSyncPInv;
 
-DWORD __fastcall sync_all_monsters(const BYTE *pbBuf, DWORD dwMaxLen)
+DWORD sync_all_monsters(const BYTE *pbBuf, DWORD dwMaxLen)
 {
 	TSyncHeader *pHdr;
 	int i;
@@ -31,7 +34,7 @@ DWORD __fastcall sync_all_monsters(const BYTE *pbBuf, DWORD dwMaxLen)
 	pHdr->bLevel = currlevel;
 	pHdr->wLen = 0;
 	SyncPlrInv(pHdr);
-	/// ASSERT: assert(dwMaxLen <= 0xffff);
+	assert(dwMaxLen <= 0xffff);
 	sync_one_monster();
 
 	for (i = 0; i < nummonsters && dwMaxLen >= sizeof(TSyncMonster); i++) {
@@ -53,13 +56,13 @@ DWORD __fastcall sync_all_monsters(const BYTE *pbBuf, DWORD dwMaxLen)
 	return dwMaxLen;
 }
 
-void __cdecl sync_one_monster()
+void sync_one_monster()
 {
 	int i, m;
 
 	for (i = 0; i < nummonsters; i++) {
 		m = monstactive[i];
-		sync_word_6AA708[m] = abs(plr[myplr].WorldX - monster[m]._mx) + abs(plr[myplr].WorldY - monster[m]._my);
+		sync_word_6AA708[m] = abs(plr[myplr]._px - monster[m]._mx) + abs(plr[myplr]._py - monster[m]._my);
 		if (monster[m]._msquelch == 0) {
 			sync_word_6AA708[m] += 0x1000;
 		} else if (sgwLRU[m] != 0) {
@@ -68,7 +71,7 @@ void __cdecl sync_one_monster()
 	}
 }
 
-BOOL __fastcall sync_monster_active(TSyncMonster *p)
+BOOL sync_monster_active(TSyncMonster *p)
 {
 	int i, m, ndx;
 	DWORD lru;
@@ -92,7 +95,7 @@ BOOL __fastcall sync_monster_active(TSyncMonster *p)
 	return TRUE;
 }
 
-void __fastcall sync_monster_pos(TSyncMonster *p, int ndx)
+void sync_monster_pos(TSyncMonster *p, int ndx)
 {
 	p->_mndx = ndx;
 	p->_mx = monster[ndx]._mx;
@@ -104,7 +107,7 @@ void __fastcall sync_monster_pos(TSyncMonster *p, int ndx)
 	sgwLRU[ndx] = monster[ndx]._msquelch == 0 ? 0xFFFF : 0xFFFE;
 }
 
-BOOL __fastcall sync_monster_active2(TSyncMonster *p)
+BOOL sync_monster_active2(TSyncMonster *p)
 {
 	int i, m, ndx;
 	DWORD lru;
@@ -132,7 +135,7 @@ BOOL __fastcall sync_monster_active2(TSyncMonster *p)
 	return TRUE;
 }
 
-void __fastcall SyncPlrInv(TSyncHeader *pHdr)
+void SyncPlrInv(TSyncHeader *pHdr)
 {
 	int ii;
 	ItemStruct *pItem;
@@ -154,7 +157,7 @@ void __fastcall SyncPlrInv(TSyncHeader *pHdr)
 			pHdr->bItemMDur = item[ii]._iName[15];
 			pHdr->bItemCh = item[ii]._iName[16];
 			pHdr->bItemMCh = item[ii]._iName[17];
-			pHdr->wItemVal = (item[ii]._iName[18] << 8) | ((item[ii]._iCurs - 19) << 6) | item[ii]._ivalue;
+			pHdr->wItemVal = (item[ii]._iName[18] << 8) | ((item[ii]._iCurs - ICURS_EAR_SORCEROR) << 6) | item[ii]._ivalue;
 			pHdr->dwItemBuff = (item[ii]._iName[19] << 24) | (item[ii]._iName[20] << 16) | (item[ii]._iName[21] << 8) | item[ii]._iName[22];
 		} else {
 			pHdr->wItemCI = item[ii]._iCreateInfo;
@@ -172,9 +175,9 @@ void __fastcall SyncPlrInv(TSyncHeader *pHdr)
 		pHdr->bItemI = -1;
 	}
 
-	/// ASSERT: assert((DWORD) sgnSyncPInv < NUM_INVLOC);
+	assert((DWORD)sgnSyncPInv < NUM_INVLOC);
 	pItem = &plr[myplr].InvBody[sgnSyncPInv];
-	if (pItem->_itype != -1) {
+	if (pItem->_itype != ITYPE_NONE) {
 		pHdr->bPInvLoc = sgnSyncPInv;
 		pHdr->wPInvIndx = pItem->IDidx;
 		pHdr->wPInvCI = pItem->_iCreateInfo;
@@ -190,7 +193,7 @@ void __fastcall SyncPlrInv(TSyncHeader *pHdr)
 	}
 }
 
-DWORD __fastcall sync_update(int pnum, const BYTE *pbBuf)
+DWORD sync_update(int pnum, const BYTE *pbBuf)
 {
 	TSyncHeader *pHdr;
 	WORD wLen;
@@ -219,20 +222,23 @@ DWORD __fastcall sync_update(int pnum, const BYTE *pbBuf)
 		pbBuf += sizeof(TSyncMonster);
 	}
 
-	/// ASSERT: assert(wLen == 0);
+	assert(wLen == 0);
 
 	return pHdr->wLen + sizeof(*pHdr);
 }
-// 676194: using guessed type char gbBufferMsgs;
 
-void __fastcall sync_monster(int pnum, const TSyncMonster *p)
+void sync_monster(int pnum, const TSyncMonster *p)
 {
 	int i, ndx, md, mdx, mdy;
 	DWORD delta;
 
 	ndx = p->_mndx;
 
+#ifdef HELLFIRE
+	if (monster[ndx]._mhitpoints <= 0) {
+#else
 	if (monster[ndx]._mhitpoints == 0) {
+#endif
 		return;
 	}
 
@@ -242,7 +248,7 @@ void __fastcall sync_monster(int pnum, const TSyncMonster *p)
 		}
 	}
 
-	delta = abs(plr[myplr].WorldX - monster[ndx]._mx) + abs(plr[myplr].WorldY - monster[ndx]._my);
+	delta = abs(plr[myplr]._px - monster[ndx]._mx) + abs(plr[myplr]._py - monster[ndx]._my);
 	if (delta > 255) {
 		delta = 255;
 	}
@@ -266,7 +272,7 @@ void __fastcall sync_monster(int pnum, const TSyncMonster *p)
 				M_ClearSquares(ndx);
 				dMonster[monster[ndx]._mx][monster[ndx]._my] = ndx + 1;
 				M_WalkDir(ndx, md);
-				monster[ndx]._msquelch = -1;
+				monster[ndx]._msquelch = UCHAR_MAX;
 			}
 		}
 	} else if (dMonster[p->_mx][p->_my] == 0) {
@@ -277,13 +283,13 @@ void __fastcall sync_monster(int pnum, const TSyncMonster *p)
 		decode_enemy(ndx, p->_menemy);
 		md = GetDirection(p->_mx, p->_my, monster[ndx]._menemyx, monster[ndx]._menemyy);
 		M_StartStand(ndx, md);
-		monster[ndx]._msquelch = -1;
+		monster[ndx]._msquelch = UCHAR_MAX;
 	}
 
 	decode_enemy(ndx, p->_menemy);
 }
 
-void __cdecl sync_init()
+void sync_init()
 {
 	sgnMonsters = 16 * myplr;
 	memset(sgwLRU, 255, sizeof(sgwLRU));

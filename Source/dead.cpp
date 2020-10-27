@@ -1,21 +1,21 @@
-//HEADER_GOES_HERE
-
-#include "../types.h"
+/**
+ * @file dead.cpp
+ *
+ * Implementation of functions for placing dead monsters.
+ */
+#include "all.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
-// unused, this was probably for blood boil/burn
+/** unused, this was probably for blood boil/burn */
 int spurtndx;
 DeadStruct dead[MAXDEAD];
 int stonendx;
 
-void __cdecl InitDead()
+void InitDead()
 {
+	int i, d, nd, mi;
 	int mtypes[MAXMONSTERS];
-	int i;
-	int nd;
-	int mi;
-	int d;
 
 	for (i = 0; i < MAXMONSTERS; i++)
 		mtypes[i] = 0;
@@ -23,7 +23,7 @@ void __cdecl InitDead()
 	nd = 0;
 
 	for (i = 0; i < nummtypes; i++) {
-		if (!mtypes[Monsters[i].mtype]) {
+		if (mtypes[Monsters[i].mtype] == 0) {
 			for (d = 0; d < 8; d++)
 				dead[nd]._deadData[d] = Monsters[i].Anims[MA_DEATH].Data[d];
 			dead[nd]._deadFrame = Monsters[i].Anims[MA_DEATH].Frames;
@@ -56,7 +56,7 @@ void __cdecl InitDead()
 
 	for (i = 0; i < nummonsters; i++) {
 		mi = monstactive[i];
-		if (monster[mi]._uniqtype) {
+		if (monster[mi]._uniqtype != 0) {
 			for (d = 0; d < 8; d++)
 				dead[nd]._deadData[d] = monster[mi].MType->Anims[MA_DEATH].Data[d];
 			dead[nd]._deadFrame = monster[mi].MType->Anims[MA_DEATH].Frames;
@@ -68,23 +68,22 @@ void __cdecl InitDead()
 		}
 	}
 
-	/// ASSERT: assert(nd <= MAXDEAD);
+	assert(nd <= MAXDEAD);
 }
 
-void __fastcall AddDead(int dx, int dy, char dv, int ddir)
+void AddDead(int dx, int dy, char dv, int ddir)
 {
 	dDead[dx][dy] = (dv & 0x1F) + (ddir << 5);
 }
 
-void __cdecl SetDead()
+void SetDead()
 {
-	int mi;
-	int i;
+	int i, mi;
 	int dx, dy;
 
 	for (i = 0; i < nummonsters; i++) {
 		mi = monstactive[i];
-		if (monster[mi]._uniqtype) {
+		if (monster[mi]._uniqtype != 0) {
 			for (dx = 0; dx < MAXDUNX; dx++) {
 				for (dy = 0; dy < MAXDUNY; dy++) {
 					if ((dDead[dx][dy] & 0x1F) == monster[mi]._udeadval)

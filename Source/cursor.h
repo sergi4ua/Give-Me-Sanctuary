@@ -1,36 +1,55 @@
-//HEADER_GOES_HERE
+/**
+ * @file cursor.h
+ *
+ * Interface of cursor tracking functionality.
+ */
 #ifndef __CURSOR_H__
 #define __CURSOR_H__
 
-extern int cursH;      // weak
-extern int icursH28;   // idb
-extern int cursW;      // idb
-extern int pcursmonst; // idb
-extern int icursW28;   // idb
-extern void *pCursCels;
-extern int icursH;        // weak
-extern char pcursinvitem; // weak
-extern int icursW;        // weak
-extern char pcursitem;    // weak
-extern char pcursobj;     // weak
-extern char pcursplr;     // weak
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern int cursW;
+extern int cursH;
+extern int pcursmonst;
+extern int icursW28;
+extern int icursH28;
+extern BYTE *pCursCels;
+#ifdef HELLFIRE
+extern BYTE *pCursCels2;
+#endif
+extern int icursH;
+extern char pcursinvitem;
+extern int icursW;
+extern char pcursitem;
+extern char pcursobj;
+extern char pcursplr;
 extern int cursmx;
 extern int cursmy;
-extern int dword_4B8CCC; // weak
-extern int pcurs;        // idb
+extern int pcurstemp;
+extern int pcurs;
 
-void __cdecl InitCursor();
-void __cdecl FreeCursor();
-void __fastcall SetICursor(int i);
-void __fastcall SetCursor_(int i);
-void __fastcall NewCursor(int i);
-void __cdecl InitLevelCursor();
-void __cdecl CheckTown();
-void __cdecl CheckRportal();
-void __cdecl CheckCursMove();
+void InitCursor();
+void FreeCursor();
+void SetICursor(int i);
+void SetCursor_(int i);
+void NewCursor(int i);
+void InitLevelCursor();
+void CheckTown();
+void CheckRportal();
+void CheckCursMove();
 
 /* rdata */
-extern const int InvItemWidth[180];
-extern const int InvItemHeight[180];
+extern const int InvItemWidth[];
+extern const int InvItemHeight[];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __CURSOR_H__ */

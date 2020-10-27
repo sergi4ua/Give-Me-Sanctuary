@@ -1,10 +1,26 @@
-//HEADER_GOES_HERE
+/**
+ * @file codec.h
+ *
+ * Interface of save game encryption algorithm.
+ */
 #ifndef __CODEC_H__
 #define __CODEC_H__
 
-int __fastcall codec_decode(void *pbSrcDst, int size, char *pszPassword);
-void __fastcall codec_init_key(int unused, char *pszPassword);
-int __fastcall codec_get_encoded_len(int dwSrcBytes);
-void __fastcall codec_encode(void *pbSrcDst, int size, int size_64, char *pszPassword);
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int codec_decode(BYTE *pbSrcDst, DWORD size, const  char *pszPassword);
+void codec_init_key(int unused, const char *pszPassword);
+DWORD codec_get_encoded_len(DWORD dwSrcBytes);
+void codec_encode(BYTE *pbSrcDst, DWORD size, int size_64, const char *pszPassword);
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __CODEC_H__ */

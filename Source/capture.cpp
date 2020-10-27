@@ -1,112 +1,75 @@
-//HEADER_GOES_HERE
+/**
+ * @file capture.cpp
+ *
+ * Implementation of the screenshot function.
+ */
+#include <fstream>
 
-#include "../types.h"
+#include "all.h"
+#include "../3rdParty/Storm/Source/storm.h"
+#include "paths.h"
+#include "file_util.h"
 
 DEVILUTION_BEGIN_NAMESPACE
 
-void __cdecl CaptureScreen()
+/**
+ * @brief Write the PCX-file header
+ * @param width Image width
+ * @param height Image height
+ * @param out File stream to write to
+ * @return True on success
+ */
+static BOOL CaptureHdr(short width, short height, std::ofstream *out)
 {
-	HANDLE hObject;
-	PALETTEENTRY palette[256];
-	char FileName[MAX_PATH];
-	BOOL success;
-
-	hObject = CaptureFile(FileName);
-	if (hObject != INVALID_HANDLE_VALUE) {
-		DrawAndBlit();
-#ifdef __cplusplus
-		lpDDPalette->GetEntries(0, 0, 256, palette);
-#else
-		lpDDPalette->lpVtbl->GetEntries(lpDDPalette, 0, 0, 256, palette);
-#endif
-		RedPalette(palette);
-
-		j_lock_buf_priv(2);
-		success = CaptureHdr(hObject, 640, 480);
-		if (success) {
-			success = CapturePix(hObject, 640, 480, 768, &gpBuffer[SCREENXY(0, 0)]);
-			if (success) {
-				success = CapturePal(hObject, palette);
-			}
-		}
-		j_unlock_buf_priv(2);
-		CloseHandle(hObject);
-
-		if (!success)
-			DeleteFile(FileName);
-
-		Sleep(300);
-#ifdef __cplusplus
-		lpDDPalette->SetEntries(0, 0, 256, palette);
-#else
-		lpDDPalette->lpVtbl->SetEntries(lpDDPalette, 0, 0, 256, palette);
-#endif
-	}
-}
-
-BOOL __fastcall CaptureHdr(HANDLE hFile, short width, short height)
-{
-	DWORD lpNumBytes;
-	PCXHeader Buffer;
+	PCXHEADER Buffer;
 
 	memset(&Buffer, 0, sizeof(Buffer));
-	Buffer.manufacturer = 10;
-	Buffer.version = 5;
-	Buffer.encoding = 1;
-	Buffer.bitsPerPixel = 8;
-	Buffer.xmax = width - 1;
-	Buffer.ymax = height - 1;
-	Buffer.horzRes = width;
-	Buffer.vertRes = height;
-	Buffer.numColorPlanes = 1;
-	Buffer.bytesPerScanLine = width;
+	Buffer.Manufacturer = 10;
+	Buffer.Version = 5;
+	Buffer.Encoding = 1;
+	Buffer.BitsPerPixel = 8;
+	Buffer.Xmax = SDL_SwapLE16(width - 1);
+	Buffer.Ymax = SDL_SwapLE16(height - 1);
+	Buffer.HDpi = SDL_SwapLE16(width);
+	Buffer.VDpi = SDL_SwapLE16(height);
+	Buffer.NPlanes = 1;
+	Buffer.BytesPerLine = SDL_SwapLE16(width);
 
-	return WriteFile(hFile, &Buffer, sizeof(Buffer), &lpNumBytes, NULL) && lpNumBytes == sizeof(Buffer);
+	out->write(reinterpret_cast<const char*>(&Buffer), sizeof(Buffer));
+	return !out->fail();
 }
 
-BOOL __fastcall CapturePal(HANDLE hFile, PALETTEENTRY *palette)
+/**
+ * @brief Write the current ingame palette to the PCX file
+ * @param palette Current palette
+ * @param out File stream for the PCX file.
+ * @return True if successful, else false
+ */
+static BOOL CapturePal(SDL_Color *palette, std::ofstream *out)
 {
-	char *v3;
-	char Buffer[769];
+	BYTE pcx_palette[1 + 256 * 3];
 	int i;
-	DWORD lpNumBytes;
 
-	Buffer[0] = 12;
-	v3 = &Buffer[1];
-	for (i = 256; i != 0; --i) {
-		v3[0] = palette->peRed;
-		v3[1] = palette->peGreen;
-		v3[2] = palette->peBlue;
-
-		palette++;
-		v3 += 3;
+	pcx_palette[0] = 12;
+	for (i = 0; i < 256; i++) {
+		pcx_palette[1 + 3 * i + 0] = palette[i].r;
+		pcx_palette[1 + 3 * i + 1] = palette[i].g;
+		pcx_palette[1 + 3 * i + 2] = palette[i].b;
 	}
 
-	return WriteFile(hFile, Buffer, sizeof(Buffer), &lpNumBytes, NULL) && lpNumBytes == sizeof(Buffer);
+	out->write(reinterpret_cast<const char *>(pcx_palette), sizeof(pcx_palette));
+	return !out->fail();
 }
 
-BOOL __fastcall CapturePix(HANDLE hFile, WORD width, WORD height, WORD stride, BYTE *pixels)
-{
-	int writeSize;
-	DWORD lpNumBytes;
-	BYTE *pBuffer, *pBufferEnd;
+/**
+ * @brief RLE compress the pixel data
+ * @param src Raw pixel buffer
+ * @param dst Output buffer
+ * @param width Width of pixel buffer
 
-	pBuffer = (BYTE *)DiabloAllocPtr(2 * width);
-	do {
-		if (!height) {
-			mem_free_dbg(pBuffer);
-			return TRUE;
-		}
-		height--;
-		pBufferEnd = CaptureEnc(pixels, pBuffer, width);
-		pixels += stride;
-		writeSize = pBufferEnd - pBuffer;
-	} while (WriteFile(hFile, pBuffer, writeSize, &lpNumBytes, 0) && lpNumBytes == writeSize);
-
-	return FALSE;
-}
-
-BYTE *__fastcall CaptureEnc(BYTE *src, BYTE *dst, int width)
+ * @return Output buffer
+ */
+static BYTE *CaptureEnc(BYTE *src, BYTE *dst, int width)
 {
 	int rleLength;
 
@@ -140,51 +103,107 @@ BYTE *__fastcall CaptureEnc(BYTE *src, BYTE *dst, int width)
 	return dst;
 }
 
-HANDLE __fastcall CaptureFile(char *dst_path)
+/**
+ * @brief Write the pixel data to the PCX file
+ * @param width Image width
+ * @param height Image height
+ * @param stride Buffer width
+ * @param pixels Raw pixel buffer
+ * @return True if successful, else false
+ */
+static bool CapturePix(WORD width, WORD height, WORD stride, BYTE *pixels, std::ofstream *out)
 {
-	BOOLEAN num_used[100];
-	int free_num, hFind;
-	struct _finddata_t finder;
+	int writeSize;
+	BYTE *pBuffer, *pBufferEnd;
 
-	memset(num_used, FALSE, sizeof(num_used));
-	hFind = _findfirst("screen??.PCX", &finder);
-	if (hFind != -1) {
-		do {
-			if (isdigit(finder.name[6]) && isdigit(finder.name[7])) {
-				free_num = 10 * (finder.name[6] - '0');
-				free_num += (finder.name[7] - '0');
-				num_used[free_num] = TRUE;
-			}
-		} while (_findnext(hFind, &finder) == 0);
+	pBuffer = (BYTE *)DiabloAllocPtr(2 * width);
+	while (height--) {
+		pBufferEnd = CaptureEnc(pixels, pBuffer, width);
+		pixels += stride;
+		writeSize = pBufferEnd - pBuffer;
+		out->write(reinterpret_cast<const char *>(pBuffer), writeSize);
+		if (out->fail()) return false;
 	}
-
-	for (free_num = 0; free_num < 100; free_num++) {
-		if (!num_used[free_num]) {
-			sprintf(dst_path, "screen%02d.PCX", free_num);
-			return CreateFile(dst_path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-		}
-	}
-
-	return INVALID_HANDLE_VALUE;
+	mem_free_dbg(pBuffer);
+	return true;
 }
 
-void __fastcall RedPalette(PALETTEENTRY *pal)
+/**
+ * Returns a pointer because in GCC < 5 ofstream itself is not moveable due to a bug.
+ */
+static std::ofstream *CaptureFile(std::string *dst_path)
 {
-	PALETTEENTRY red[256];
-	int i;
-
-	for (i = 0; i < 256; i++) {
-		red[i].peRed = pal[i].peRed;
-		red[i].peGreen = 0;
-		red[i].peBlue = 0;
-		red[i].peFlags = 0;
+	char filename[sizeof("screen00.PCX") / sizeof(char)];
+	for (int i = 0; i <= 99; ++i) {
+		snprintf(filename, sizeof(filename) / sizeof(char), "screen%02d.PCX", i);
+		*dst_path = GetPrefPath() + filename;
+		if (!FileExists(dst_path->c_str())) {
+			return new std::ofstream(*dst_path, std::ios::binary | std::ios::trunc);
+		}
 	}
+	return NULL;
+}
 
-#ifdef __cplusplus
-	lpDDPalette->SetEntries(0, 0, 256, red);
-#else
-	lpDDPalette->lpVtbl->SetEntries(lpDDPalette, 0, 0, 256, red);
-#endif
+/**
+ * @brief Make a red version of the given palette and apply it to the screen.
+ */
+static void RedPalette()
+{
+	for (int i = 0; i < 255; i++) {
+		system_palette[i].g = 0;
+		system_palette[i].b = 0;
+	}
+	palette_update();
+	SDL_Rect SrcRect = {
+		SCREEN_X,
+		SCREEN_Y,
+		SCREEN_WIDTH,
+		SCREEN_HEIGHT,
+	};
+	BltFast(&SrcRect, NULL);
+	RenderPresent();
+}
+
+/**
+ * @brief Save the current screen to a screen??.PCX (00-99) in file if available, then make the screen red for 200ms.
+
+ */
+void CaptureScreen()
+{
+	SDL_Color palette[256];
+	std::string FileName;
+	BOOL success;
+
+	std::ofstream *out = CaptureFile(&FileName);
+	if (out == NULL) return;
+	DrawAndBlit();
+	PaletteGetEntries(256, palette);
+	RedPalette();
+
+	lock_buf(2);
+	success = CaptureHdr(SCREEN_WIDTH, SCREEN_HEIGHT, out);
+	if (success) {
+		success = CapturePix(SCREEN_WIDTH, SCREEN_HEIGHT, BUFFER_WIDTH, &gpBuffer[SCREENXY(0, 0)], out);
+	}
+	if (success) {
+		success = CapturePal(palette, out);
+	}
+	unlock_buf(2);
+	out->close();
+
+	if (!success) {
+		SDL_Log("Failed to save screenshot at %s", FileName.c_str());
+		RemoveFile(FileName.c_str());
+	} else {
+		SDL_Log("Screenshot saved at %s", FileName.c_str());
+	}
+	SDL_Delay(300);
+	for (int i = 0; i < 256; i++) {
+		system_palette[i] = palette[i];
+	}
+	palette_update();
+	force_redraw = 255;
+	delete out;
 }
 
 DEVILUTION_END_NAMESPACE

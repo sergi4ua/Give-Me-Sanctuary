@@ -1,32 +1,44 @@
-//HEADER_GOES_HERE
+/**
+ * @file appfat.h
+ *
+ * Interface of error dialogs.
+ */
 #ifndef __APPFAT_H__
 #define __APPFAT_H__
 
-extern char sz_error_buf[256];
-extern int terminating;       // weak
-extern int cleanup_thread_id; // weak
+DEVILUTION_BEGIN_NAMESPACE
 
-char *__fastcall GetErrorStr(DWORD error_code);
-void __fastcall TraceErrorDD(HRESULT hError, char *pszBuffer, DWORD dwMaxChars);
-void __fastcall TraceErrorDS(HRESULT hError, char *pszBuffer, DWORD dwMaxChars);
-char *__cdecl TraceLastError();
-void app_fatal(const char *pszFmt, ...);
-void __fastcall MsgBox(const char *pszFmt, va_list va);
-void __cdecl FreeDlg();
-void DrawDlg(char *pszFmt, ...);
-#ifdef _DEBUG
-void __fastcall assert_fail(int nLineNo, const char *pszFile, const char *pszFail);
+#ifdef __cplusplus
+extern "C" {
 #endif
-void __fastcall DDErrMsg(DWORD error_code, int log_line_nr, char *log_file_path);
-void __fastcall DSErrMsg(DWORD error_code, int log_line_nr, char *log_file_path);
-void __fastcall center_window(HWND hDlg);
-void __fastcall ErrDlg(int template_id, DWORD error_code, char *log_file_path, int log_line_nr);
-BOOL __stdcall FuncDlg(HWND hDlg, UINT uMsg, WPARAM wParam, char *text);
-void __fastcall TextDlg(HWND hDlg, char *text);
-void __fastcall ErrOkDlg(int template_id, DWORD error_code, char *log_file_path, int log_line_nr);
-void __fastcall FileErrDlg(const char *error);
-void __fastcall DiskFreeDlg(char *error);
-BOOL __cdecl InsertCDDlg();
-void __fastcall DirErrorDlg(char *error);
+
+extern char sz_error_buf[256];
+extern BOOL terminating;
+
+void TriggerBreak();
+char *GetErrorStr(DWORD error_code);
+#define TraceLastError SDL_GetError
+void app_fatal(const char *pszFmt, ...);
+void MsgBox(const char *pszFmt, va_list va);
+void FreeDlg();
+void DrawDlg(const char *pszFmt, ...);
+#ifdef _DEBUG
+void assert_fail(int nLineNo, const char *pszFile, const char *pszFail);
+#endif
+void DDErrMsg(DWORD error_code, int log_line_nr, const char *log_file_path);
+void DSErrMsg(DWORD error_code, int log_line_nr, const char *log_file_path);
+void center_window(HWND hDlg);
+void ErrDlg(const char *title, const char *error, const char *log_file_path, int log_line_nr);
+void TextDlg(HWND hDlg, char *text);
+void FileErrDlg(const char *error);
+void DiskFreeDlg(const char *error);
+void InsertCDDlg();
+void DirErrorDlg(const char *error);
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __APPFAT_H__ */

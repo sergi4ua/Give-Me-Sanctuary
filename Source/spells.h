@@ -1,17 +1,30 @@
-//HEADER_GOES_HERE
+/**
+ * @file spells.h
+ *
+ * Interface of functionality for casting player spells.
+ */
 #ifndef __SPELLS_H__
 #define __SPELLS_H__
 
-int __fastcall GetManaAmount(int id, int sn);
-void __fastcall UseMana(int id, int sn);
-BOOL __fastcall CheckSpell(int id, int sn, BYTE st, BOOL manaonly);
-void __fastcall CastSpell(int id, int spl, int sx, int sy, int dx, int dy, BOOL caster, int spllvl);
-void __fastcall DoResurrect(int pnum, int rid);
-void __fastcall PlacePlayer(int pnum);
-void __fastcall DoHealOther(int pnum, int rid);
+DEVILUTION_BEGIN_NAMESPACE
 
-/* rdata */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-extern SpellData spelldata[MAX_SPELLS];
+int GetManaAmount(int id, int sn);
+void UseMana(int id, int sn);
+BOOL CheckSpell(int id, int sn, char st, BOOL manaonly);
+void CastSpell(int id, int spl, int sx, int sy, int dx, int dy, int caster, int spllvl);
+void DoResurrect(int pnum, int rid);
+void DoHealOther(int pnum, int rid);
+int GetSpellBookLevel(int s);
+int GetSpellStaffLevel(int s);
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __SPELLS_H__ */

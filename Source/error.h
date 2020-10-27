@@ -1,17 +1,33 @@
-//HEADER_GOES_HERE
+/**
+ * @file error.h
+ *
+ * Interface of in-game message functions.
+ */
 #ifndef __ERROR_H__
 #define __ERROR_H__
 
-extern char msgtable[80];
-extern char msgdelay;
+DEVILUTION_BEGIN_NAMESPACE
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern char msgtable[MAX_SEND_STR_LEN];
+extern DWORD msgdelay;
 extern char msgflag;
 extern char msgcnt;
 
-void __fastcall InitDiabloMsg(char e);
-void __cdecl ClrDiabloMsg();
-void __cdecl DrawDiabloMsg();
+void InitDiabloMsg(char e);
+void ClrDiabloMsg();
+void DrawDiabloMsg();
 
 /* data */
-extern char *MsgStrings[44];
+extern const char *const MsgStrings[];
+
+#ifdef __cplusplus
+}
+#endif
+
+DEVILUTION_END_NAMESPACE
 
 #endif /* __ERROR_H__ */
